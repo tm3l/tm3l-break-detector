@@ -40,22 +40,22 @@ graph LR
 
     subgraph "Data & Real-time"
         PG[(PostgreSQL 17)]
-        PB[(PocketBase 0.25)]
+        
     end
 
     UI -- "JSON / REST" --> Server
-    UI -- "SSE Subscriptions" --> PB
+    UI -- "SSE Subscriptions" --> Server
     Admin -- "HTML over the wire" --> Server
     Server -- "Subprocess / IPC" --> Rust
     Server -- "ACID Transactions" --> PG
-    Server -- "Publish Caches" --> PB
+    
 ```
 
 ## 🛠 Tech Stack
 - **Engine**: Rust 2024 (Strict AST validation & semantic diffing)
 - **API**: Go 1.23 + `templ` + `HTMX`
 - **UI**: React 19 + TypeScript + Vite 6 + Tailwind CSS
-- **Databases**: PostgreSQL 17 (Primary) + PocketBase 0.25 (Edge/Real-time)
+- **Databases**: PostgreSQL 17 (Primary)
 
 ## 🚀 Getting Started
 ```bash
