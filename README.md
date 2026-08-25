@@ -79,7 +79,7 @@ For full architectural details and design decisions, see [docs/architecture.md](
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/tm3l/break-detector.git
+   git clone https://github.com/tm3l/tm3l-break-detector.git
    cd break-detector
    ```
 
