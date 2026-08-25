@@ -1,0 +1,46 @@
+name: 'Break Detector OpenAPI Diff'
+description: 'Detect breaking changes between OpenAPI specifications in CI/CD pull requests'
+author: 'tm3l'
+
+inputs:
+  base-spec:
+    description: 'Path to the base (original) OpenAPI spec file'
+    required: true
+  target-spec:
+    description: 'Path to the target (proposed) OpenAPI spec file'
+    required: true
+  fail-on-breaking:
+    description: 'Whether to fail the step if breaking changes are detected'
+    required: false
+    default: 'true'
+  output-format:
+    description: 'Output format (json, markdown, text)'
+    required: false
+    default: 'markdown'
+
+outputs:
+  breaking-changes:
+    description: 'Number of breaking changes detected'
+  risky-changes:
+    description: 'Number of risky changes detected'
+  safe-changes:
+    description: 'Number of safe changes detected'
+  diff-report:
+    description: 'Formatted diff report content'
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - '--base'
+    - ${{ inputs.base-spec }}
+    - '--target'
+    - ${{ inputs.target-spec }}
+    - '--fail-on-breaking'
+    - ${{ inputs.fail-on-breaking }}
+    - '--format'
+    - ${{ inputs.output-format }}
+
+branding:
+  icon: 'search'
+  color: 'yellow'

@@ -1,0 +1,52 @@
+# Binaries and build artifacts
+/bin/
+/dist/
+/target/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Rust
+engine/target/
+**/*.rs.bk
+Cargo.lock
+
+# Go
+server/bin/
+server/server
+*.test
+*.out
+go.work
+go.work.sum
+
+# Node / React Viewer
+viewer/node_modules/
+viewer/dist/
+viewer/.vite/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment files
+.env
+.env.local
+.env.*.local
+*.env
+
+# IDE / Editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Database / Local storage
+*.db
+*.sqlite
+postgres-data/

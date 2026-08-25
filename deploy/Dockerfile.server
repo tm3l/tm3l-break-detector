@@ -1,0 +1,33 @@
+# Build Rust Engine
+FROM rust:1.83-alpine AS engine-builder
+
+RUN apk add --no-cache musl-dev
+
+WORKDIR /app/engine
+COPY engine/Cargo.toml engine/Cargo.lock* ./
+COPY engine/src ./src
+RUN cargo build --release
+
+# Build Go Server
+FROM golang:1.23-alpine AS server-builder
+
+WORKDIR /app/server
+COPY server/go.mod server/go.sum* ./
+RUN go mod download || true
+
+COPY server/ ./
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /app/server/bin/server ./cmd/server/main.go
+
+# Runtime Stage
+FROM alpine:3.20
+
+RUN apk add --no-cache ca-certificates tzdata
+
+WORKDIR /app
+
+COPY --from=engine-builder /app/engine/target/release/break-detector-engine /usr/local/bin/break-detector-engine
+COPY --from=server-builder /app/server/bin/server /usr/local/bin/break-detector-server
+
+EXPOSE 8080
+
+ENTRYPOINT ["/usr/local/bin/break-detector-server"]
