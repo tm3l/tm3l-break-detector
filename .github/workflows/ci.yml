@@ -15,7 +15,7 @@ jobs:
         working-directory: engine
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -50,7 +50,7 @@ jobs:
         working-directory: server
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -78,7 +78,7 @@ jobs:
         working-directory: viewer
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -99,7 +99,7 @@ jobs:
     needs: [viewer]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Run Playwright E2E in Docker
         run: docker compose -f viewer/docker-compose.e2e.yml up --build --abort-on-container-exit --exit-code-from playwright
