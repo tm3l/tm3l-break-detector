@@ -5,16 +5,16 @@ services:
     image: postgres:17-alpine
     container_name: break-detector-db
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-breakdetect}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-breakdetect_secret}
-      POSTGRES_DB: ${POSTGRES_DB:-breakdetect_dev}
+      POSTGRES_USER: tm3l_user
+      POSTGRES_PASSWORD: tm3l_password
+      POSTGRES_DB: tm3l_break_detector
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-breakdetect} -d ${POSTGRES_DB:-breakdetect_dev}"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U tm3l_user -d tm3l_break_detector"]
+      interval: 2s
       timeout: 5s
       retries: 5
     deploy:
@@ -22,54 +22,32 @@ services:
         limits:
           memory: 512M
 
-  pocketbase:
-    image: ghcr.io/muchobien/pocketbase:latest
-    container_name: break-detector-pb
-    ports:
-      - "8091:8090"
-    volumes:
-      - pb_data:/pb_data
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8090/api/health"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-
   server:
     build:
       context: .
       dockerfile: deploy/Dockerfile.server
     container_name: break-detector-server
     environment:
-      PORT: "8080"
-      DATABASE_URL: "postgres://${POSTGRES_USER:-breakdetect}:${POSTGRES_PASSWORD:-breakdetect_secret}@postgres:5432/${POSTGRES_DB:-breakdetect_dev}?sslmode=disable"
-      POCKETBASE_URL: "http://pocketbase:8090"
-      ENV: "development"
+      DATABASE_URL: "postgres://tm3l_user:tm3l_password@postgres:5432/tm3l_break_detector?sslmode=disable"
     ports:
       - "8081:8080"
     depends_on:
       postgres:
         condition: service_healthy
-      pocketbase:
-        condition: service_healthy
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 256M
 
   viewer:
     build:
-      context: ./viewer
+      context: .
+      dockerfile: deploy/Dockerfile.viewer
     container_name: break-detector-viewer
-    environment:
-      VITE_API_URL: "http://localhost:8081"
-      VITE_PB_URL: "http://localhost:8091"
     ports:
       - "5173:5173"
+    depends_on:
+      - server
     volumes:
       - ./viewer:/app
       - /app/node_modules
@@ -80,4 +58,3 @@ services:
 
 volumes:
   postgres_data:
-  pb_data:

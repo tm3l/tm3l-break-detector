@@ -7,15 +7,46 @@ on:
     branches: [ "main" ]
 
 jobs:
+  engine:
+    name: Engine (Rust) – Format, Clippy & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: engine
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: engine
+
+      - name: Check Formatting
+        run: cargo fmt --check
+
+      - name: Run Clippy Linter
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Run Tests
+        run: cargo test --all-targets --all-features
+
   server:
-    name: Go Server – Build & Test
+    name: Server (Go) – Build & Test
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: server
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -36,19 +67,20 @@ jobs:
         run: go vet ./...
 
   viewer:
-    name: Viewer UI – Build
+    name: Viewer (React) – Build
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: viewer
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: viewer/package-lock.json
 

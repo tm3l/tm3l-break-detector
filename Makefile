@@ -1,42 +1,22 @@
-.PHONY: all build build-engine build-server build-viewer test test-engine test-server test-viewer docker-up docker-down clean
+.PHONY: db-up db-down test-engine test-api clean
 
-all: build
+db-up:
+	@echo "Starting PostgreSQL (OrbStack/Docker)..."
+	docker compose up -d postgres
+	@echo "Waiting for PostgreSQL to be healthy..."
+	@sleep 3
 
-build: build-engine build-server build-viewer
-
-build-engine:
-	@echo "Building Rust diff engine..."
-	cd engine && cargo build --release
-
-build-server:
-	@echo "Building Go API server..."
-	cd server && go build -o bin/server cmd/server/main.go
-
-build-viewer:
-	@echo "Building React diff viewer..."
-	cd viewer && npm install && npm run build
-
-test: test-engine test-server test-viewer
+db-down:
+	@echo "Stopping Database..."
+	docker compose down -v
 
 test-engine:
 	@echo "Running Rust engine tests..."
 	cd engine && cargo test
 
-test-server:
+test-api:
 	@echo "Running Go server tests..."
-	cd server && go test ./...
-
-test-viewer:
-	@echo "Running React viewer tests..."
-	cd viewer && npm test --if-present
-
-docker-up:
-	@echo "Starting Docker Compose services..."
-	docker compose up --build -d
-
-docker-down:
-	@echo "Stopping Docker Compose services..."
-	docker compose down -v
+	cd server && DATABASE_URL="postgres://tm3l_user:tm3l_password@localhost:5432/tm3l_break_detector?sslmode=disable" go test -v ./...
 
 clean:
 	@echo "Cleaning build artifacts..."

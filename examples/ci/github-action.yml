@@ -1,0 +1,33 @@
+name: Check TM3L Diff
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  tm3l-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run TM3L Diff
+        run: |
+          # Package the base and target OpenAPI specs
+          # Assuming specs are generated or exist in the repo
+          # curl POST to TM3L Diff endpoint
+          
+          RESPONSE=$(curl -s -X POST -H "Authorization: Bearer ${{ secrets.TM3L_API_KEY }}" \
+            -F "project_id=my_project" \
+            -F "commit_sha=${{ github.event.pull_request.head.sha }}" \
+            -F "base_spec=@base_spec.json" \
+            -F "target_spec=@target_spec.json" \
+            http://tm3l-break-detector.example.com/api/diffs)
+          
+          STATUS=$(echo "$RESPONSE" | jq -r .status)
+          if [ "$STATUS" = "FAILED" ]; then
+            echo "FAILED"
+            exit 1
+          fi
+          echo "Passed"

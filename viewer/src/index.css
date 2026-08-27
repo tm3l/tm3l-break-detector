@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Custom Scrollbar for Dark Cyberpunk Theme */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #090c10;
+    border-left: 1px solid #1e293b;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+  }
+
+  /* Fade in animation for cards */
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in-up {
+    animation: fade-in-up 0.4s ease-out forwards;
+  }
+
+  /* Custom JSON Syntax Highlighting */
+  .json-key { color: #22d3ee; } /* cyan-400 */
+  .json-string { color: #34d399; } /* emerald-400 */
+  .json-number { color: #fbbf24; } /* amber-400 */
+  .json-boolean { color: #fb7185; } /* rose-400 */
+  .json-null { color: #94a3b8; } /* slate-400 */
+}
