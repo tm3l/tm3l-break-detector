@@ -1,23 +1,22 @@
-.PHONY: db-up db-down test-engine test-api clean
+.PHONY: all build test lint run build-engine build-go
 
-db-up:
-	@echo "Starting PostgreSQL (OrbStack/Docker)..."
-	docker compose up -d postgres
-	@echo "Waiting for PostgreSQL to be healthy..."
-	@sleep 3
+all: build
 
-db-down:
-	@echo "Stopping Database..."
-	docker compose down -v
+build: build-engine build-go
 
-test-engine:
-	@echo "Running Rust engine tests..."
+build-engine:
+	cd engine && cargo build --release
+	cp engine/target/release/break_detector_engine ./break-detector-engine
+
+build-go:
+	go build -o bin/server ./cmd/server
+
+test:
+	go test -v ./...
 	cd engine && cargo test
 
-test-api:
-	@echo "Running Go server tests..."
-	cd server && DATABASE_URL="postgres://tm3l_user:tm3l_password@localhost:5432/tm3l_break_detector?sslmode=disable" go test -v ./...
+lint:
+	golangci-lint run
 
-clean:
-	@echo "Cleaning build artifacts..."
-	rm -rf engine/target server/bin viewer/dist
+run: build
+	./bin/server
