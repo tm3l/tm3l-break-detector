@@ -41,6 +41,7 @@ func (s *Server) routes() {
 	s.Router.With(RequireAPIKey).Post("/api/diffs", s.handleRunDiff)
 	s.Router.With(RequireJWT).Post("/api/diffs/{id}/override", s.handleOverrideDiff)
 	s.Router.Post("/api/prompt", s.handleGeneratePrompt)
+	s.Router.Post("/api/code-diff", s.handleCodeDiff)
 }
 
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {

@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -21,7 +22,7 @@ func TestAPIContracts(t *testing.T) {
 
 	store, err := db.NewPostgresStore(dsn)
 	if err != nil {
-		t.Fatalf("Failed to connect to db: %v", err)
+		t.Skipf("Skipping integration test: database not reachable (%v)", err)
 	}
 
 	broker := NewBroker()
@@ -36,22 +37,33 @@ func TestAPIContracts(t *testing.T) {
 	broker.mu.Unlock()
 
 	// Test 1: Create Project
-	reqBody := []byte(`{"name":"test-api-proj-3"}`)
+	projectName := fmt.Sprintf("test-api-proj-%d", time.Now().UnixNano())
+	reqBody, _ := json.Marshal(map[string]string{"name": projectName})
 	req, _ := http.NewRequest("POST", "/api/projects", bytes.NewBuffer(reqBody))
 	rr := httptest.NewRecorder()
 
 	server.Router.ServeHTTP(rr, req)
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("Failed to create project (status %d): %s", rr.Code, rr.Body.String())
+	}
 
 	var p models.Project
-	json.NewDecoder(rr.Body).Decode(&p)
+	if err := json.NewDecoder(rr.Body).Decode(&p); err != nil {
+		t.Fatalf("Failed to decode project: %v", err)
+	}
 
 	// Setup Mock Diff Run directly in DB for Test 2 (we skip testing the multipart file upload directly to save test boilerplate)
+	sha := "abcdef123456"
 	run := &models.DiffRun{
 		ProjectID:      p.ID,
+		CommitSHA:      &sha,
 		Status:         "FAILED",
-		RawDiffPayload: json.RawMessage(`{}`),
+		BreakingCount:  1,
+		RawDiffPayload: json.RawMessage(`{"summary": {"breaking": 1}}`),
 	}
-	store.InsertDiffRun(run)
+	if err := store.InsertDiffRun(run); err != nil {
+		t.Fatalf("Failed to insert diff run: %v", err)
+	}
 
 	// Test Login
 	loginBody := []byte(`{"password":"admin"}`)

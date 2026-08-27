@@ -13,7 +13,10 @@ fn test_xrange() {
     let code = r#"for i in xrange(10):\n    pass"#;
     let result = check_python_migration(code);
     assert!(result.summary.breaking >= 1);
-    assert!(result.changes.iter().any(|c| c.citation.contains("PEP 3100")));
+    assert!(result
+        .changes
+        .iter()
+        .any(|c| c.citation.contains("PEP 3100")));
 }
 
 #[test]
@@ -37,7 +40,9 @@ fn test_except_comma_syntax() {
     let code = r#"except Exception, e:"#;
     let result = check_python_migration(code);
     assert_eq!(result.summary.breaking, 1);
-    assert!(result.changes[0].proposed_fix.contains("except Exception as e:"));
+    assert!(result.changes[0]
+        .proposed_fix
+        .contains("except Exception as e:"));
 }
 
 #[test]
@@ -49,7 +54,8 @@ fn test_legacy_imports() {
 
 #[test]
 fn test_dict_iter_methods() {
-    let code = "for k, v in d.iteritems():\n    for k in d.iterkeys():\n        for v in d.itervalues():";
+    let code =
+        "for k, v in d.iteritems():\n    for k in d.iterkeys():\n        for v in d.itervalues():";
     let result = check_python_migration(code);
     assert_eq!(result.summary.breaking, 3);
 }
@@ -75,5 +81,8 @@ if __name__ == "__main__":
     main()
 "#;
     let result = check_python_migration(code);
-    assert_eq!(result.summary.breaking, 0, "Clean Python 3 should have zero breaking changes");
+    assert_eq!(
+        result.summary.breaking, 0,
+        "Clean Python 3 should have zero breaking changes"
+    );
 }

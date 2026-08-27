@@ -1,6 +1,6 @@
-use openapiv3::{OpenAPI, Schema, ReferenceOr};
-use crate::models::{Change, IPCResponse, Summary};
 use crate::config::TM3LConfig;
+use crate::models::{Change, IPCResponse, Summary};
+use openapiv3::{OpenAPI, ReferenceOr, Schema};
 
 pub fn compare_specs(base: &OpenAPI, target: &OpenAPI, config: &TM3LConfig) -> IPCResponse {
     let mut changes = Vec::new();
@@ -10,7 +10,10 @@ pub fn compare_specs(base: &OpenAPI, target: &OpenAPI, config: &TM3LConfig) -> I
 
     for (path, base_item_ref) in &base.paths.paths {
         if !target.paths.paths.contains_key(path) {
-            if !config.ignore_rules.contains(&"removed_endpoint".to_string()) {
+            if !config
+                .ignore_rules
+                .contains(&"removed_endpoint".to_string())
+            {
                 changes.push(Change {
                     severity: "BREAKING".to_string(),
                     path: format!("paths.{}", path),
@@ -26,11 +29,11 @@ pub fn compare_specs(base: &OpenAPI, target: &OpenAPI, config: &TM3LConfig) -> I
             let target_item = target.paths.paths.get(path).unwrap().as_item().unwrap();
 
             let ops = vec![
-                ("GET",    &base_item.get,    &target_item.get),
-                ("POST",   &base_item.post,   &target_item.post),
-                ("PUT",    &base_item.put,    &target_item.put),
+                ("GET", &base_item.get, &target_item.get),
+                ("POST", &base_item.post, &target_item.post),
+                ("PUT", &base_item.put, &target_item.put),
                 ("DELETE", &base_item.delete, &target_item.delete),
-                ("PATCH",  &base_item.patch,  &target_item.patch),
+                ("PATCH", &base_item.patch, &target_item.patch),
             ];
 
             for (method, b_op, t_op) in ops {
@@ -57,13 +60,22 @@ pub fn compare_specs(base: &OpenAPI, target: &OpenAPI, config: &TM3LConfig) -> I
                                 ) = (&b_content.schema, &t_content.schema)
                                 {
                                     let mut local = diff_schemas(
-                                        b_schema, t_schema,
-                                        &format!("paths.{}.{}.requestBody", path, method.to_lowercase()),
+                                        b_schema,
+                                        t_schema,
+                                        &format!(
+                                            "paths.{}.{}.requestBody",
+                                            path,
+                                            method.to_lowercase()
+                                        ),
                                         config,
                                     );
                                     for c in &local {
-                                        if c.severity == "BREAKING" { breaking += 1; }
-                                        if c.severity == "ADDITIVE" { additive += 1; }
+                                        if c.severity == "BREAKING" {
+                                            breaking += 1;
+                                        }
+                                        if c.severity == "ADDITIVE" {
+                                            additive += 1;
+                                        }
                                     }
                                     changes.append(&mut local);
                                 }
@@ -75,30 +87,40 @@ pub fn compare_specs(base: &OpenAPI, target: &OpenAPI, config: &TM3LConfig) -> I
         }
     }
 
-    IPCResponse { summary: Summary { breaking, dangerous, additive }, changes }
+    IPCResponse {
+        summary: Summary {
+            breaking,
+            dangerous,
+            additive,
+        },
+        changes,
+    }
 }
 
-fn resolve_schema_ref<'a, T>(schema_ref: &'a ReferenceOr<T>) -> Option<&'a T> {
+fn resolve_schema_ref<T>(schema_ref: &ReferenceOr<T>) -> Option<&T> {
     match schema_ref {
         ReferenceOr::Item(s) => Some(s),
         ReferenceOr::Reference { .. } => None,
     }
 }
 
-fn diff_schemas(base: &Schema, target: &Schema, location: &str, config: &TM3LConfig) -> Vec<Change> {
+fn diff_schemas(
+    base: &Schema,
+    target: &Schema,
+    location: &str,
+    config: &TM3LConfig,
+) -> Vec<Change> {
     let mut changes = Vec::new();
 
-    if let (
-        openapiv3::SchemaKind::Type(b_type),
-        openapiv3::SchemaKind::Type(t_type),
-    ) = (&base.schema_kind, &target.schema_kind)
+    if let (openapiv3::SchemaKind::Type(b_type), openapiv3::SchemaKind::Type(t_type)) =
+        (&base.schema_kind, &target.schema_kind)
     {
         let type_name = |t: &openapiv3::Type| match t {
-            openapiv3::Type::String(_)  => "string",
-            openapiv3::Type::Number(_)  => "number",
+            openapiv3::Type::String(_) => "string",
+            openapiv3::Type::Number(_) => "number",
             openapiv3::Type::Integer(_) => "integer",
-            openapiv3::Type::Object(_)  => "object",
-            openapiv3::Type::Array(_)   => "array",
+            openapiv3::Type::Object(_) => "object",
+            openapiv3::Type::Array(_) => "array",
             openapiv3::Type::Boolean(_) => "boolean",
         };
 
@@ -112,9 +134,15 @@ fn diff_schemas(base: &Schema, target: &Schema, location: &str, config: &TM3LCon
                 severity: "BREAKING".to_string(),
                 path: location.to_string(),
                 description: format!("Data type changed from '{}' to '{}'.", b_name, t_name),
-                citation: config.custom_citations.get("type_change").cloned()
-                    .unwrap_or_else(|| "Changing a field's data type breaks backwards compatibility.".to_string()),
-                proposed_fix: "Keep the original data type or create a new field/endpoint.".to_string(),
+                citation: config
+                    .custom_citations
+                    .get("type_change")
+                    .cloned()
+                    .unwrap_or_else(|| {
+                        "Changing a field's data type breaks backwards compatibility.".to_string()
+                    }),
+                proposed_fix: "Keep the original data type or create a new field/endpoint."
+                    .to_string(),
             });
         }
 
@@ -139,7 +167,10 @@ fn diff_schemas(base: &Schema, target: &Schema, location: &str, config: &TM3LCon
         }
 
         if let (openapiv3::Type::Object(b_obj), openapiv3::Type::Object(t_obj)) = (b_type, t_type) {
-            if !config.ignore_rules.contains(&"new_required_field".to_string()) {
+            if !config
+                .ignore_rules
+                .contains(&"new_required_field".to_string())
+            {
                 for req_field in &t_obj.required {
                     if !b_obj.required.contains(req_field) {
                         changes.push(Change {
@@ -156,11 +187,13 @@ fn diff_schemas(base: &Schema, target: &Schema, location: &str, config: &TM3LCon
 
             for (prop_name, b_prop_ref) in &b_obj.properties {
                 if let Some(t_prop_ref) = t_obj.properties.get(prop_name) {
-                    if let (Some(b_prop), Some(t_prop)) =
-                        (resolve_schema_ref(b_prop_ref), resolve_schema_ref(t_prop_ref))
-                    {
+                    if let (Some(b_prop), Some(t_prop)) = (
+                        resolve_schema_ref(b_prop_ref),
+                        resolve_schema_ref(t_prop_ref),
+                    ) {
                         let mut sub = diff_schemas(
-                            b_prop, t_prop,
+                            b_prop,
+                            t_prop,
                             &format!("{}.{}", location, prop_name),
                             config,
                         );

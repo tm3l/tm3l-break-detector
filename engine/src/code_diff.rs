@@ -12,7 +12,10 @@ pub fn check_python_migration(code: &str) -> IPCResponse {
     let re_raw_input = Regex::new(r#"raw_input\("#).unwrap();
     let re_unicode = Regex::new(r#"\bunicode\("#).unwrap();
     let re_except = Regex::new(r#"except\s+(\w+)\s*,\s*(\w+)\s*:"#).unwrap();
-    let re_imports = Regex::new(r#"^(import|from)\s+(urllib2|httplib|urlparse|ConfigParser|Queue|cPickle|StringIO)\b"#).unwrap();
+    let re_imports = Regex::new(
+        r#"^(import|from)\s+(urllib2|httplib|urlparse|ConfigParser|Queue|cPickle|StringIO)\b"#,
+    )
+    .unwrap();
     let re_iteritems = Regex::new(r#"\.iteritems\(\)"#).unwrap();
     let re_iterkeys = Regex::new(r#"\.iterkeys\(\)"#).unwrap();
     let re_itervalues = Regex::new(r#"\.itervalues\(\)"#).unwrap();
@@ -24,14 +27,17 @@ pub fn check_python_migration(code: &str) -> IPCResponse {
         let line_num = i + 1;
         let path = format!("line:L{}", line_num);
         let trimmed = line.trim();
-        if trimmed.starts_with('#') { continue; }
+        if trimmed.starts_with('#') {
+            continue;
+        }
 
         if let Some(caps) = re_print.captures(line) {
             let arg = caps.get(2).map_or("", |m| m.as_str()).trim();
             changes.push(Change {
                 severity: "BREAKING".to_string(),
                 path: path.clone(),
-                description: "Python 2 print statement without parentheses is invalid in Python 3.".to_string(),
+                description: "Python 2 print statement without parentheses is invalid in Python 3."
+                    .to_string(),
                 citation: "PEP 3105: Make print a function".to_string(),
                 proposed_fix: format!("{}print({})", &caps[1], arg),
             });
@@ -73,7 +79,8 @@ pub fn check_python_migration(code: &str) -> IPCResponse {
             changes.push(Change {
                 severity: "BREAKING".to_string(),
                 path: path.clone(),
-                description: "Old 'except Exception, e:' syntax is invalid in Python 3.".to_string(),
+                description: "Old 'except Exception, e:' syntax is invalid in Python 3."
+                    .to_string(),
                 citation: "PEP 3110: Catching Exceptions in Python 3000".to_string(),
                 proposed_fix: format!("except {} as {}:", exc, var),
             });
@@ -82,19 +89,22 @@ pub fn check_python_migration(code: &str) -> IPCResponse {
         if let Some(caps) = re_imports.captures(line) {
             let module = caps.get(2).map_or("", |m| m.as_str());
             let py3_equiv = match module {
-                "urllib2"     => "urllib.request / urllib.error",
-                "httplib"     => "http.client",
-                "urlparse"    => "urllib.parse",
-                "ConfigParser"=> "configparser",
-                "Queue"       => "queue",
-                "cPickle"     => "pickle",
-                "StringIO"    => "io.StringIO",
-                _             => "Python 3 equivalent",
+                "urllib2" => "urllib.request / urllib.error",
+                "httplib" => "http.client",
+                "urlparse" => "urllib.parse",
+                "ConfigParser" => "configparser",
+                "Queue" => "queue",
+                "cPickle" => "pickle",
+                "StringIO" => "io.StringIO",
+                _ => "Python 3 equivalent",
             };
             changes.push(Change {
                 severity: "BREAKING".to_string(),
                 path: path.clone(),
-                description: format!("Legacy module '{}' was removed/renamed in Python 3.", module),
+                description: format!(
+                    "Legacy module '{}' was removed/renamed in Python 3.",
+                    module
+                ),
                 citation: "PEP 3108: Standard Library Reorganization".to_string(),
                 proposed_fix: format!("Replace '{}' with '{}'", module, py3_equiv),
             });
@@ -169,7 +179,11 @@ pub fn check_python_migration(code: &str) -> IPCResponse {
     }
 
     IPCResponse {
-        summary: Summary { breaking, dangerous: 0, additive: 0 },
+        summary: Summary {
+            breaking,
+            dangerous: 0,
+            additive: 0,
+        },
         changes,
     }
 }

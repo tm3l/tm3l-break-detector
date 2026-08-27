@@ -35,7 +35,12 @@ func processJob(store db.Store, broker *Broker, job DiffJob) {
 	defer os.Remove(job.BaseFile)
 	defer os.Remove(job.TargetFile)
 
-	cmd := exec.Command("./break-detector-engine", "--base", job.BaseFile, "--target", job.TargetFile)
+	var cmd *exec.Cmd
+	if job.Mode == "python_migration" {
+		cmd = exec.Command("./break-detector-engine", "--mode", "python_migration", "--target", job.TargetFile)
+	} else {
+		cmd = exec.Command("./break-detector-engine", "--base", job.BaseFile, "--target", job.TargetFile)
+	}
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &stdout

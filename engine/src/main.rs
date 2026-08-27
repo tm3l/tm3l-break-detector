@@ -1,9 +1,9 @@
+use anyhow::{Context, Result};
+use break_detector_engine::code_diff::check_python_migration;
+use break_detector_engine::config::TM3LConfig;
+use break_detector_engine::diff::compare_specs;
 use clap::Parser;
 use std::fs;
-use anyhow::{Context, Result};
-use break_detector_engine::diff::compare_specs;
-use break_detector_engine::config::TM3LConfig;
-use break_detector_engine::code_diff::check_python_migration;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about)]
@@ -50,8 +50,8 @@ fn main() -> Result<()> {
     let target_file = fs::read_to_string(&args.target)
         .with_context(|| format!("Failed to read target spec: {}", args.target))?;
 
-    let base_spec: openapiv3::OpenAPI = serde_json::from_str(&base_file)
-        .context("Failed to parse base spec as OpenAPI JSON")?;
+    let base_spec: openapiv3::OpenAPI =
+        serde_json::from_str(&base_file).context("Failed to parse base spec as OpenAPI JSON")?;
     let target_spec: openapiv3::OpenAPI = serde_json::from_str(&target_file)
         .context("Failed to parse target spec as OpenAPI JSON")?;
 
