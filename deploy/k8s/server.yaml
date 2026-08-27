@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tm3l-server
+  namespace: default
+  labels:
+    app: tm3l-server
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: tm3l-server
+  template:
+    metadata:
+      labels:
+        app: tm3l-server
+    spec:
+      containers:
+        - name: server
+          image: tm3l/break-detector-server:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: DATABASE_URL
+              value: "postgres://tm3l_user:tm3l_password@tm3l-postgres-svc:5432/tm3l_break_detector?sslmode=disable"
+            - name: JWT_SECRET
+              value: "tm3l-production-super-secret-key"
+          readinessProbe:
+            httpGet:
+              path: /api/events
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/events
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tm3l-server-svc
+  namespace: default
+spec:
+  selector:
+    app: tm3l-server
+  ports:
+    - port: 8080
+      targetPort: 8080

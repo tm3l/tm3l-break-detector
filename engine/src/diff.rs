@@ -49,6 +49,15 @@ pub fn compare_specs(base: &OpenAPI, target: &OpenAPI, config: &TM3LConfig) -> I
                         breaking += 1;
                     }
                 } else if let (Some(b), Some(t)) = (b_op, t_op) {
+                    let op_loc = format!("paths.{}.{}", path, method.to_lowercase());
+
+                    // --- Parameter Diffing ---
+                    diff_parameters(&b.parameters, &t.parameters, &op_loc, config, &mut changes, &mut breaking);
+
+                    // --- Response Diffing ---
+                    diff_responses(&b.responses, &t.responses, &op_loc, config, &mut changes, &mut breaking, &mut additive);
+
+                    // --- Request Body Diffing ---
                     if let (Some(ReferenceOr::Item(b_req)), Some(ReferenceOr::Item(t_req))) =
                         (&b.request_body, &t.request_body)
                     {
@@ -62,11 +71,7 @@ pub fn compare_specs(base: &OpenAPI, target: &OpenAPI, config: &TM3LConfig) -> I
                                     let mut local = diff_schemas(
                                         b_schema,
                                         t_schema,
-                                        &format!(
-                                            "paths.{}.{}.requestBody",
-                                            path,
-                                            method.to_lowercase()
-                                        ),
+                                        &format!("{}.requestBody", op_loc),
                                         config,
                                     );
                                     for c in &local {
@@ -96,6 +101,139 @@ pub fn compare_specs(base: &OpenAPI, target: &OpenAPI, config: &TM3LConfig) -> I
         changes,
     }
 }
+
+fn diff_parameters(
+    b_params: &[ReferenceOr<openapiv3::Parameter>],
+    t_params: &[ReferenceOr<openapiv3::Parameter>],
+    op_loc: &str,
+    config: &TM3LConfig,
+    changes: &mut Vec<Change>,
+    breaking: &mut usize,
+) {
+    use openapiv3::Parameter;
+
+    let extract_data = |p_ref: &ReferenceOr<Parameter>| match p_ref {
+        ReferenceOr::Item(p) => match p {
+            Parameter::Query { parameter_data, .. } => Some((parameter_data.name.clone(), parameter_data.required, "query")),
+            Parameter::Header { parameter_data, .. } => Some((parameter_data.name.clone(), parameter_data.required, "header")),
+            Parameter::Path { parameter_data, .. } => Some((parameter_data.name.clone(), parameter_data.required, "path")),
+            Parameter::Cookie { parameter_data, .. } => Some((parameter_data.name.clone(), parameter_data.required, "cookie")),
+        },
+        _ => None,
+    };
+
+    let b_map: std::collections::HashMap<String, (bool, &'static str)> = b_params
+        .iter()
+        .filter_map(extract_data)
+        .map(|(name, req, kind)| (name, (req, kind)))
+        .collect();
+
+    let t_map: std::collections::HashMap<String, (bool, &'static str)> = t_params
+        .iter()
+        .filter_map(extract_data)
+        .map(|(name, req, kind)| (name, (req, kind)))
+        .collect();
+
+    // Check for removed parameters
+    for (name, (_req, kind)) in &b_map {
+        if !t_map.contains_key(name) && !config.ignore_rules.contains(&"removed_parameter".to_string()) {
+            changes.push(Change {
+                severity: "BREAKING".to_string(),
+                path: format!("{}.parameters.{}.{}", op_loc, kind, name),
+                description: format!("{} parameter '{}' was removed.", kind, name),
+                citation: "OpenAPI Spec 3.1.0, Section 4.8. Removing parameters breaks existing client requests.".to_string(),
+                proposed_fix: format!("Restore the {} parameter '{}' or mark it deprecated.", kind, name),
+            });
+            *breaking += 1;
+        }
+    }
+
+    // Check for new required parameters or parameters made required
+    for (name, (t_req, kind)) in &t_map {
+        if *t_req {
+            if let Some((b_req, _)) = b_map.get(name) {
+                if !b_req && !config.ignore_rules.contains(&"new_required_field".to_string()) {
+                    changes.push(Change {
+                        severity: "BREAKING".to_string(),
+                        path: format!("{}.parameters.{}.{}", op_loc, kind, name),
+                        description: format!("{} parameter '{}' was made required, but it was optional before.", kind, name),
+                        citation: "RFC 7231. Making an optional parameter required breaks existing consumers.".to_string(),
+                        proposed_fix: format!("Make the {} parameter '{}' optional or provide a default value.", kind, name),
+                    });
+                    *breaking += 1;
+                }
+            } else if !config.ignore_rules.contains(&"new_required_field".to_string()) {
+                changes.push(Change {
+                    severity: "BREAKING".to_string(),
+                    path: format!("{}.parameters.{}.{}", op_loc, kind, name),
+                    description: format!("New required {} parameter '{}' was added.", kind, name),
+                    citation: "Adding a required parameter to an existing endpoint breaks existing consumers.".to_string(),
+                    proposed_fix: format!("Make the new {} parameter '{}' optional or provide a default value.", kind, name),
+                });
+                *breaking += 1;
+            }
+        }
+    }
+}
+
+fn diff_responses(
+    b_responses: &openapiv3::Responses,
+    t_responses: &openapiv3::Responses,
+    op_loc: &str,
+    config: &TM3LConfig,
+    changes: &mut Vec<Change>,
+    breaking: &mut usize,
+    additive: &mut usize,
+) {
+    for (status_code, b_resp_ref) in &b_responses.responses {
+        let code_str = match status_code {
+            openapiv3::StatusCode::Code(c) => c.to_string(),
+            openapiv3::StatusCode::Range(r) => format!("{}XX", r),
+        };
+
+        if let Some(t_resp_ref) = t_responses.responses.get(status_code) {
+            if let (Some(ReferenceOr::Item(b_resp)), Some(ReferenceOr::Item(t_resp))) =
+                (Some(b_resp_ref), Some(t_resp_ref))
+            {
+                for (media_type, b_content) in &b_resp.content {
+                    if let Some(t_content) = t_resp.content.get(media_type) {
+                        if let (
+                            Some(ReferenceOr::Item(b_schema)),
+                            Some(ReferenceOr::Item(t_schema)),
+                        ) = (&b_content.schema, &t_content.schema)
+                        {
+                            let mut local = diff_schemas(
+                                b_schema,
+                                t_schema,
+                                &format!("{}.responses.{}.content.{}", op_loc, code_str, media_type),
+                                config,
+                            );
+                            for c in &local {
+                                if c.severity == "BREAKING" {
+                                    *breaking += 1;
+                                }
+                                if c.severity == "ADDITIVE" {
+                                    *additive += 1;
+                                }
+                            }
+                            changes.append(&mut local);
+                        }
+                    }
+                }
+            }
+        } else if !config.ignore_rules.contains(&"removed_response".to_string()) {
+            changes.push(Change {
+                severity: "BREAKING".to_string(),
+                path: format!("{}.responses.{}", op_loc, code_str),
+                description: format!("Response status code '{}' was removed.", code_str),
+                citation: "OpenAPI Spec 3.1.0. Removing a documented HTTP response code violates the API contract.".to_string(),
+                proposed_fix: format!("Restore response status code '{}'.", code_str),
+            });
+            *breaking += 1;
+        }
+    }
+}
+
 
 fn resolve_schema_ref<T>(schema_ref: &ReferenceOr<T>) -> Option<&T> {
     match schema_ref {

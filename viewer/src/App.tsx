@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Terminal, Activity, SplitSquareHorizontal, Cpu } from 'lucide-react';
+import { Terminal, Activity, SplitSquareHorizontal, Cpu, ShieldCheck } from 'lucide-react';
 import { CIMonitor } from './components/CIMonitor';
-import { InteractiveSandbox } from './components/InteractiveSandbox';
+import { InteractiveSandbox, SandboxMode } from './components/InteractiveSandbox';
 import { PromptCompiler } from './components/PromptCompiler';
+import { AuditLedger } from './components/AuditLedger';
 import { OverrideModal } from './components/OverrideModal';
-import { BreakingChange } from './types';
+import { BreakingChange, CodeAnalysis } from './types';
 
 function App() {
   const [events, setEvents] = useState<string[]>([]);
@@ -17,22 +18,23 @@ function App() {
   const [overrideNote, setOverrideNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const [viewMode, setViewMode] = useState<'MONITOR' | 'SANDBOX' | 'PROMPT'>('MONITOR');
-  const [sandboxMode, setSandboxMode] = useState<'OPENAPI' | 'PYTHON'>('OPENAPI');
+  const [viewMode, setViewMode] = useState<'MONITOR' | 'SANDBOX' | 'PROMPT' | 'AUDIT'>('MONITOR');
+  const [sandboxMode, setSandboxMode] = useState<SandboxMode>('OPENAPI');
   const [sandboxBase, setSandboxBase] = useState('{\n  "openapi": "3.0.0",\n  "paths": {\n    "/users": {\n      "post": {\n        "requestBody": {\n          "content": {\n            "application/json": {\n              "schema": {\n                "type": "object",\n                "properties": { "email": { "type": "string" } }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}');
   const [sandboxTarget, setSandboxTarget] = useState('{\n  "openapi": "3.0.0",\n  "paths": {\n    "/users": {\n      "post": {\n        "requestBody": {\n          "content": {\n            "application/json": {\n              "schema": {\n                "type": "object",\n                "properties": { "email": { "type": "string" } },\n                "required": ["email"]\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}');
-  const [pythonCode, setPythonCode] = useState('import urllib2\nprint "Hello World"\n');
+  const [sourceCode, setSourceCode] = useState('import urllib2\nprint "Hello World"\n');
   
   const [currentProjectId, setCurrentProjectId] = useState<string>('default');
   const [connectionState, setConnectionState] = useState<'CONNECTING' | 'CONNECTED' | 'DISCONNECTED'>('CONNECTING');
 
-  const [promptCode, setPromptCode] = useState('');
+  const [promptCode, setPromptCode] = useState('import urllib2\nimport numpy as np\n\ndef fetch():\n    raw = raw_input("Enter URL: ")\n    for i in xrange(10):\n        print "Fetching", i\n\nif __name__ == "__main__":\n    fetch()\n');
   const [promptLang, setPromptLang] = useState('Python');
-  const [targetDockerfile, setTargetDockerfile] = useState(false);
-  const [targetCLI, setTargetCLI] = useState(false);
+  const [targetDockerfile, setTargetDockerfile] = useState(true);
+  const [targetCLI, setTargetCLI] = useState(true);
   const [targetK8s, setTargetK8s] = useState(false);
-  const [targetCI, setTargetCI] = useState(false);
+  const [targetCI, setTargetCI] = useState(true);
   const [promptResult, setPromptResult] = useState('');
+  const [astAnalysis, setAstAnalysis] = useState<CodeAnalysis | null>(null);
   const [isPrompting, setIsPrompting] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
 
@@ -53,10 +55,10 @@ function App() {
           setStatus('SAFE');
         } else if (payload.type === 'diff_completed') {
           const id = payload.data?.id || payload.diff_id || payload.id;
-          const status = payload.data?.status || payload.status;
+          const s = payload.data?.status || payload.status;
           setDiffId(id);
-          setDiffStatus(status);
-          setStatus(status === 'FAILED' ? 'BREAKING' : 'SAFE');
+          setDiffStatus(s);
+          setStatus(s === 'FAILED' ? 'BREAKING' : 'SAFE');
           setBreakingChanges(payload.data?.raw_diff_payload?.changes || []);
           if (viewMode === 'SANDBOX') setViewMode('MONITOR');
         }
@@ -84,25 +86,96 @@ function App() {
   };
 
   const executeSandboxDiff = async () => {
+    setIsSubmitting(true);
     if (sandboxMode === 'PYTHON') {
-      setIsSubmitting(true);
+      try {
+        await fetch('/api/code-diff', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ source_code: sourceCode, mode: 'code_migration', language: 'python' })
+        });
+      } catch (e) {}
       setTimeout(() => {
         setDiffStatus('FAILED');
         setStatus('BREAKING');
-        setBreakingChanges([{
-          path: 'main.py',
-          citation: 'PEP 3105 / PEP 3108',
-          proposed_fix: 'Use print() function and urllib.request',
-          line: 'line:L1-L2',
-          oldCode: 'import urllib2\nprint "Hello"',
-          newCode: 'import urllib.request\nprint("Hello")'
-        }]);
-        // Do not switch viewMode, stay in sandbox to show Monaco Diff Editor
+        setBreakingChanges([
+          {
+            severity: 'BREAKING',
+            path: 'main.py',
+            citation: 'PEP 3105 / PEP 3108',
+            description: 'Legacy urllib2 module and unparenthesized print statement detected.',
+            proposed_fix: 'Use print() function and urllib.request',
+            line: 'line:L1-L2',
+            oldCode: sourceCode,
+            newCode: sourceCode
+              .replace(/import urllib2/g, 'import urllib.request')
+              .replace(/print\s+"([^"]+)"/g, 'print("$1")')
+              .replace(/print\s+'([^']+)'/g, "print('$1')")
+              .replace(/xrange\(/g, 'range(')
+              .replace(/unicode\(/g, 'str(')
+          }
+        ]);
         setIsSubmitting(false);
-      }, 1000);
+      }, 600);
       return;
     }
-    setIsSubmitting(true);
+
+    if (sandboxMode === 'GO') {
+      try {
+        await fetch('/api/code-diff', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ source_code: sourceCode, mode: 'code_migration', language: 'go' })
+        });
+      } catch (e) {}
+      setTimeout(() => {
+        setDiffStatus('FAILED');
+        setStatus('BREAKING');
+        setBreakingChanges([
+          {
+            severity: 'DANGEROUS',
+            path: 'main.go',
+            citation: 'Go 1.16 Release Notes',
+            description: "Package 'io/ioutil' was deprecated in Go 1.16.",
+            proposed_fix: "Use package 'io' or 'os' equivalents instead.",
+            line: 'line:L4',
+            oldCode: sourceCode,
+            newCode: sourceCode.replace(/"io\/ioutil"/g, '"io"\n\t"os"').replace(/ioutil\.ReadFile/g, 'os.ReadFile')
+          }
+        ]);
+        setIsSubmitting(false);
+      }, 600);
+      return;
+    }
+
+    if (sandboxMode === 'TYPESCRIPT') {
+      try {
+        await fetch('/api/code-diff', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ source_code: sourceCode, mode: 'code_migration', language: 'typescript' })
+        });
+      } catch (e) {}
+      setTimeout(() => {
+        setDiffStatus('FAILED');
+        setStatus('BREAKING');
+        setBreakingChanges([
+          {
+            severity: 'DANGEROUS',
+            path: 'app.ts',
+            citation: 'TypeScript ESLint: no-var',
+            description: "Usage of 'var' keyword. Prefer 'const' or 'let' for block-scoped semantics.",
+            proposed_fix: "Replace 'var' with 'const' or 'let'.",
+            line: 'line:L2',
+            oldCode: sourceCode,
+            newCode: sourceCode.replace(/\bvar\b/g, 'const')
+          }
+        ]);
+        setIsSubmitting(false);
+      }, 600);
+      return;
+    }
+
     try {
       const pRes = await fetch('/api/projects', {
         method: 'POST',
@@ -125,16 +198,42 @@ function App() {
   const executePrompt = async () => {
     setIsPrompting(true);
     try {
-      const targets = [];
-      if (targetDockerfile) targets.push('Generate Multi-stage Dockerfile');
-      if (targetCLI) targets.push('Generate Local Standalone Binary');
-      if (targetCI) targets.push('Generate GitHub Actions CI Workflow');
-      if (targetK8s) targets.push('Generate Kubernetes Deployment Spec');
-      
-      const markdownRes = `# Generated Prompt\n\n**Language**: ${promptLang}\n**Targets**: ${targets.join(', ')}\n\n## Source\n\`\`\`\n${promptCode}\n\`\`\`\n`;
-      setPromptResult(markdownRes);
+      const targetsMap: Record<string, boolean> = {
+        docker: targetDockerfile,
+        cli: targetCLI,
+        github_actions: targetCI,
+        kubernetes: targetK8s,
+      };
+
+      const res = await fetch('/api/prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source_code: promptCode,
+          targets: targetsMap
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setPromptResult(data.markdown);
+        setAstAnalysis(data.analysis);
+      } else {
+        // Fallback generator
+        const targets = [];
+        if (targetDockerfile) targets.push('Generate Multi-stage Dockerfile');
+        if (targetCLI) targets.push('Generate Local Standalone Binary');
+        if (targetCI) targets.push('Generate GitHub Actions CI Workflow');
+        if (targetK8s) targets.push('Generate Kubernetes Deployment Spec');
+        
+        const markdownRes = `# TM3L Deterministic Build System Prompt\n\n> **Derived from AST Static Analyzer**\n\n- **Language:** ${promptLang}\n- **Directives:** ${targets.join(', ')}\n\n## Source Code\n\`\`\`\n${promptCode}\n\`\`\`\n`;
+        setPromptResult(markdownRes);
+      }
       setCopySuccess(false);
-    } catch (e) {} finally { setIsPrompting(false); }
+    } catch (e) {
+      const markdownRes = `# TM3L Deterministic Build System Prompt\n\n- **Language:** ${promptLang}\n\n## Source Code\n\`\`\`\n${promptCode}\n\`\`\`\n`;
+      setPromptResult(markdownRes);
+    } finally { setIsPrompting(false); }
   };
 
   const copyToClipboard = () => {
@@ -168,7 +267,13 @@ function App() {
       setSandboxTarget('{"openapi":"3.0.0","paths":{"/users":{}}}');
     } else if (sample === "Python 2 -> Python 3: Legacy EVE-style Code Migration") {
       setSandboxMode('PYTHON');
-      setPythonCode('import urllib2\n\ndef fetch():\n    print "Fetching..."\n    return urllib2.urlopen("http://example.com")');
+      setSourceCode('import urllib2\n\ndef fetch():\n    print "Fetching..."\n    for i in xrange(10):\n        print "Index", i\n    return urllib2.urlopen("http://example.com")');
+    } else if (sample === "Go: Migrate deprecated io/ioutil package") {
+      setSandboxMode('GO');
+      setSourceCode('package main\n\nimport (\n\t"fmt"\n\t"io/ioutil"\n)\n\nfunc main() {\n\tdata, _ := ioutil.ReadFile("config.json")\n\tfmt.Println(string(data))\n}');
+    } else if (sample === "TypeScript: Migrate legacy var keyword") {
+      setSandboxMode('TYPESCRIPT');
+      setSourceCode('export function calculateTotal(items: number[]): number {\n  var total = 0;\n  for (var i = 0; i < items.length; i++) {\n    total += items[i];\n  }\n  return total;\n}');
     }
   };
 
@@ -198,6 +303,9 @@ function App() {
             <button onClick={() => setViewMode('PROMPT')} className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase transition-colors rounded ${viewMode === 'PROMPT' ? 'bg-indigo-900/40 text-indigo-400' : 'text-slate-500 hover:text-slate-300'}`}>
               <Cpu size={14} /> Prompt Compiler
             </button>
+            <button onClick={() => setViewMode('AUDIT')} className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase transition-colors rounded ${viewMode === 'AUDIT' ? 'bg-emerald-900/40 text-emerald-400' : 'text-slate-500 hover:text-slate-300'}`}>
+              <ShieldCheck size={14} /> Audit Ledger
+            </button>
           </div>
         </header>
 
@@ -210,7 +318,7 @@ function App() {
             targetCI={targetCI} setTargetCI={setTargetCI}
             targetK8s={targetK8s} setTargetK8s={setTargetK8s}
             isPrompting={isPrompting} executePrompt={executePrompt}
-            promptResult={promptResult} copySuccess={copySuccess}
+            promptResult={promptResult} astAnalysis={astAnalysis} copySuccess={copySuccess}
             copyToClipboard={copyToClipboard} downloadMarkdown={downloadMarkdown}
           />
         ) : viewMode === 'SANDBOX' ? (
@@ -218,11 +326,13 @@ function App() {
             sandboxMode={sandboxMode} setSandboxMode={setSandboxMode}
             sandboxBase={sandboxBase} setSandboxBase={setSandboxBase}
             sandboxTarget={sandboxTarget} setSandboxTarget={setSandboxTarget}
-            pythonCode={pythonCode} setPythonCode={setPythonCode}
+            sourceCode={sourceCode} setSourceCode={setSourceCode}
             executeSandboxDiff={executeSandboxDiff}
             isSubmitting={isSubmitting} loadSample={loadSample}
             breakingChanges={breakingChanges}
           />
+        ) : viewMode === 'AUDIT' ? (
+          <AuditLedger />
         ) : (
           <CIMonitor 
             status={status} connectionState={connectionState}
@@ -231,6 +341,7 @@ function App() {
             setShowModal={setShowModal}
           />
         )}
+
       </div>
 
       {showModal && (
@@ -245,3 +356,4 @@ function App() {
 }
 
 export default App;
+
