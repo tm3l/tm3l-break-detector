@@ -1,0 +1,32 @@
+[
+  {
+    "id": "task_a_adr",
+    "prompt": "Scaffold a new ADR for introducing Redis caching.",
+    "expected_artifacts": ["docs/adr/*.md"],
+    "assertions": [
+      "make test",
+      "make lint",
+      "check_mermaid_exists",
+      "check_word_count >= 150"
+    ]
+  },
+  {
+    "id": "task_b_migration",
+    "prompt": "Write a database migration file for a new users table.",
+    "expected_artifacts": ["migrations/*.sql"],
+    "assertions": [
+      "make test",
+      "check_up_down_pairs"
+    ]
+  },
+  {
+    "id": "task_c_health",
+    "prompt": "Add a health-check controller to the Go API gateway.",
+    "expected_artifacts": ["*.go"],
+    "assertions": [
+      "make test",
+      "make build",
+      "make lint"
+    ]
+  }
+]

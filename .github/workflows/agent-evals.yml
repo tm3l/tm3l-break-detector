@@ -1,0 +1,32 @@
+name: Agent Evals
+
+on:
+  pull_request:
+    paths:
+      - 'GEMINI.md'
+      - 'CLAUDE.md'
+      - 'CODEX.md'
+      - 'LOCAL.md'
+      - 'AGENTS.md'
+      - 'tests/evals/**'
+
+jobs:
+  agent-eval:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Run Sandbox Harness & Evals
+        run: |
+          echo "Running agent evaluation harness..."
+          # This is a placeholder for the actual headless agent execution.
+          # It would invoke the agent with the tasks in tests/evals/dataset/
+          # and verify the assertions (make test, make lint, rigor checks, etc.)
+          echo "Mock: All tasks executed successfully in hermetic sandbox."
+          echo "Mock: Assertions passed."

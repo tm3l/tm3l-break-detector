@@ -1,6 +1,6 @@
-# GEMINI.md (Gemini / Google / Antigravity Agent Context)
+# CODEX.md (GitHub Copilot / OpenAI / GPT Context)
 
-This file contains system instructions, context mappings, and coding conventions optimized for Google Gemini, Vertex AI, and Antigravity agents operating in the TM3L repository.
+This file provides system instructions and coding conventions optimized for OpenAI, GitHub Copilot, and GPT-based agents operating in the TM3L repository.
 
 ## ⚠️ STRICT RULE: Agent Contract & Authority
 Before performing any task, read and comply with [AGENTS.md](AGENTS.md).
@@ -28,7 +28,7 @@ Documentation in this repo is version-controlled and categorized under `docs/` u
 * `adr` and `pdr` documents **must** include a ````mermaid```` sequence or flowchart diagram.
 * **No placeholders or stubs**: Do not write placeholder text. If information is missing, ask the user to explain the trade-offs first via an interactive alignment session ("grill me").
 
-## 🤖 Gemini-Specific Execution Rules
-* **XML Tag Wrapper Style**: Wrap key execution thoughts, reasoning steps, and outputs in clear, standard XML tags (e.g. `<reasoning>`, `<task_plan>`, `<diff_block>`) to leverage Gemini's structured output capability.
-* **Leverage Long Context**: Gemini possesses a massive context window. Read full source files and cross-reference dependencies across the repository before implementing changes to guarantee architectural alignment.
-* **Verify System Invariants**: Before concluding any task, always execute the local compliance auditor via `make test`. Ensure that all 10 standards (`STD-001` to `STD-010`) pass with a Platinum Quality Tier score.
+## 🤖 Codex-Specific Execution Rules
+* **Inline Completions**: Keep code generations focused and idiomatic to the language (Go, Rust, Python, TypeScript).
+* **Refactoring and Boilerplate**: When generating large blocks of boilerplate or refactoring, ensure that the existing architectural boundaries (e.g. `sqlc` database layer) are strictly respected.
+* **Context Awareness**: If working in a limited context window, focus on the immediate file and its direct dependencies. Ensure all generated code passes `make lint`.

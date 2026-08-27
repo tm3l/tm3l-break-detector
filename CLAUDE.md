@@ -1,6 +1,6 @@
-# GEMINI.md (Gemini / Google / Antigravity Agent Context)
+# CLAUDE.md (Claude Code Context)
 
-This file contains system instructions, context mappings, and coding conventions optimized for Google Gemini, Vertex AI, and Antigravity agents operating in the TM3L repository.
+This file provides system instructions and behavior rules optimized for Claude Code and Claude-based agents operating in the TM3L repository.
 
 ## ⚠️ STRICT RULE: Agent Contract & Authority
 Before performing any task, read and comply with [AGENTS.md](AGENTS.md).
@@ -28,7 +28,7 @@ Documentation in this repo is version-controlled and categorized under `docs/` u
 * `adr` and `pdr` documents **must** include a ````mermaid```` sequence or flowchart diagram.
 * **No placeholders or stubs**: Do not write placeholder text. If information is missing, ask the user to explain the trade-offs first via an interactive alignment session ("grill me").
 
-## 🤖 Gemini-Specific Execution Rules
-* **XML Tag Wrapper Style**: Wrap key execution thoughts, reasoning steps, and outputs in clear, standard XML tags (e.g. `<reasoning>`, `<task_plan>`, `<diff_block>`) to leverage Gemini's structured output capability.
-* **Leverage Long Context**: Gemini possesses a massive context window. Read full source files and cross-reference dependencies across the repository before implementing changes to guarantee architectural alignment.
-* **Verify System Invariants**: Before concluding any task, always execute the local compliance auditor via `make test`. Ensure that all 10 standards (`STD-001` to `STD-010`) pass with a Platinum Quality Tier score.
+## 🤖 Claude-Specific Execution Rules
+* **Zero-Trust Secrets**: Never commit `.env` files, credentials, or embed API keys in code or decision records.
+* **Test Isolation**: All test suites must run locally. Do not add hard dependencies on external cloud APIs without explicitly mocking them.
+* **Analytical Reasoning**: Break down complex problems step-by-step. If architectural invariants conflict with the user request, pause execution and ask the human operator for direction.
