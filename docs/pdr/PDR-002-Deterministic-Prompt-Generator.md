@@ -33,3 +33,23 @@ To be documented.
 
 ## 4. Consequences & Trade-offs
 To be documented.
+
+## 5. Product Visualizations
+
+This user journey map visualizes our core product value proposition: "Prompt Engineer as a Service". By completely abstracting the complexity of AST parsing and compilation environment design, we empower developers to generate flawless scripts via their LLM of choice without suffering from hallucinated dependencies.
+
+```mermaid
+journey
+    title User Journey: The LLM Compiler (Prompt Engineer as a Service)
+    section 1. Input & Context
+      Upload legacy source code: 5: User
+      Select target OS (e.g. Linux): 4: User
+      Select output type (e.g. Dockerfile): 5: User
+    section 2. TM3L Processing
+      Parse AST & Extract Facts (Rust): 5: TM3L
+      Inject Facts into Markdown Template (Go): 5: TM3L
+    section 3. Execution & Result
+      Copy deterministic prompt to clipboard: 5: User
+      Paste prompt into Claude/Gemini: 4: User
+      LLM generates flawless build script: 5: External LLM
+```
