@@ -135,7 +135,7 @@ func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	event, _ := json.Marshal(map[string]interface{}{"type": "project_created", "data": p})
-	s.broker.Notifier <- event
+	s.broker.Notifier <- BrokerEvent{ProjectID: p.ID, Payload: event}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -215,6 +215,12 @@ func (s *Server) handleOverrideDiff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	diffRun, err := s.store.GetDiffRun(diffID)
+	projectID := "default"
+	if err == nil {
+		projectID = diffRun.ProjectID
+	}
+
 	event, _ := json.Marshal(map[string]interface{}{
 		"type":          "diff_overridden",
 		"diff_id":       diffID,
@@ -222,7 +228,7 @@ func (s *Server) handleOverrideDiff(w http.ResponseWriter, r *http.Request) {
 		"override_note": req.Note,
 		"timestamp":     time.Now().UTC().Format(time.RFC3339),
 	})
-	s.broker.Notifier <- event
+	s.broker.Notifier <- BrokerEvent{ProjectID: projectID, Payload: event}
 
 	// Dispatch Webhook to close the CI/CD loop (async with HMAC signature)
 	go dispatchWebhook(event)

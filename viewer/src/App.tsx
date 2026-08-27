@@ -301,7 +301,7 @@ function App() {
               <SplitSquareHorizontal size={14} /> Sandbox
             </button>
             <button onClick={() => setViewMode('PROMPT')} className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase transition-colors rounded ${viewMode === 'PROMPT' ? 'bg-indigo-900/40 text-indigo-400' : 'text-slate-500 hover:text-slate-300'}`}>
-              <Cpu size={14} /> Prompt Compiler
+              <Cpu size={14} /> [ LLM Prompt Compiler ]
             </button>
             <button onClick={() => setViewMode('AUDIT')} className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase transition-colors rounded ${viewMode === 'AUDIT' ? 'bg-emerald-900/40 text-emerald-400' : 'text-slate-500 hover:text-slate-300'}`}>
               <ShieldCheck size={14} /> Audit Ledger

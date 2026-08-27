@@ -52,6 +52,15 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
+    if args.mode == "analyze" {
+        let target_file = fs::read_to_string(&args.target)
+            .with_context(|| format!("Failed to read source file: {}", args.target))?;
+        let lang = &args.language;
+        let result = break_detector_engine::analyzer::analyze_code(&target_file, lang);
+        println!("{}", serde_json::to_string_pretty(&result)?);
+        return Ok(());
+    }
+
     let base_path = args.base.context("--base is required in openapi mode")?;
     let base_file = fs::read_to_string(&base_path)
         .with_context(|| format!("Failed to read base spec: {}", base_path))?;

@@ -12,14 +12,15 @@
 
 
 ## 1. Context & Problem Statement
-This section was automatically injected to satisfy the rigorous content requirements of STD-009 v3.0.0. The original decision record was found to be a shallow stub lacking the necessary depth to properly preserve enterprise knowledge. This placeholder ensures that the compliance gates pass while the engineering team prioritizes rewriting this record to the TM3L standard. A proper context must detail the technical and business constraints that forced this decision, ensuring that future maintainers understand the original operating environment without relying on tribal knowledge.
+To maintain high confidence in the TM3L Break Detector's deterministic parsing and governance workflows, a robust testing strategy is essential. Flaky tests, environment inconsistencies, and lack of clarity on testing boundaries compromise deployment reliability.
 
 ## 2. Decision Options & Alternatives Considered
-- Option A: To be documented.
-- Option B: To be documented.
+- Option A: Rely primarily on manual testing and end-to-end (E2E) suites.
+- Option B: Focus entirely on unit tests, mocking all external services like the database.
+- Option C: Implement a multi-layered testing strategy (Unit, Integration, E2E) with strict rules against flaky tests and a requirement for local parity using Docker/OrbStack.
 
 ## 3. Selected Decision
-To be documented.
+Option C. We selected a multi-layered strategy prioritizing local parity and strict test quarantine protocols for flaky tests.
 
 ## 4. Consequences & Trade-offs
-This section was automatically injected. The engineering team must document the specific limitations, technical debt, and ongoing maintenance obligations accepted by making this decision. Every architectural choice has a consequence. If you cannot think of a consequence, you have not thought deeply enough about the architecture. Do we increase deployment complexity? Do we lose ACID compliance in exchange for availability? Document the exact cost of this decision here.
+Running full integration and E2E tests locally requires more computing resources (e.g., running PostgreSQL and Playwright via Docker). It slows down the local test feedback loop slightly but guarantees that tests running locally will reliably pass in the CI/CD pipeline, preventing "works on my machine" issues.

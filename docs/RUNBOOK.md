@@ -50,14 +50,15 @@ just restart
 
 
 ## 1. Context & Problem Statement
-This section was automatically injected to satisfy the rigorous content requirements of STD-009 v3.0.0. The original decision record was found to be a shallow stub lacking the necessary depth to properly preserve enterprise knowledge. This placeholder ensures that the compliance gates pass while the engineering team prioritizes rewriting this record to the TM3L standard. A proper context must detail the technical and business constraints that forced this decision, ensuring that future maintainers understand the original operating environment without relying on tribal knowledge.
+Operational incidents require rapid triage and remediation. Without a standardized runbook, operators waste critical time attempting to diagnose database connection failures, worker starvation, or SSE connection drops. A centralized operational runbook is required to streamline disaster recovery.
 
 ## 2. Decision Options & Alternatives Considered
-- Option A: To be documented.
-- Option B: To be documented.
+- Option A: Rely on tribal knowledge and ad-hoc troubleshooting during incidents.
+- Option B: Store runbooks in an external service like Confluence.
+- Option C: Embed a `RUNBOOK.md` directly into the repository, utilizing `just` commands for executable triage.
 
 ## 3. Selected Decision
-To be documented.
+Option C. We chose to embed `RUNBOOK.md` in the repository, making it highly accessible and actionable through predefined `just` commands.
 
 ## 4. Consequences & Trade-offs
-This section was automatically injected. The engineering team must document the specific limitations, technical debt, and ongoing maintenance obligations accepted by making this decision. Every architectural choice has a consequence. If you cannot think of a consequence, you have not thought deeply enough about the architecture. Do we increase deployment complexity? Do we lose ACID compliance in exchange for availability? Document the exact cost of this decision here.
+Operators must ensure they are looking at the correct version of the runbook for their specific release tier. Keeping the runbook up-to-date as the architecture evolves requires strict documentation hygiene during code changes, but the immediate availability of recovery steps during an outage heavily outweighs this cost.

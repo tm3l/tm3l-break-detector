@@ -82,5 +82,5 @@ func processJob(store db.Store, broker *Broker, job DiffJob) {
 	}
 
 	event, _ := json.Marshal(map[string]interface{}{"type": "diff_completed", "data": run})
-	broker.Notifier <- event
+	broker.Notifier <- BrokerEvent{ProjectID: run.ProjectID, Payload: event}
 }

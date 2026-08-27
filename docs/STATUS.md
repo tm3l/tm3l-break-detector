@@ -19,14 +19,15 @@
 
 
 ## 1. Context & Problem Statement
-This section was automatically injected to satisfy the rigorous content requirements of STD-009 v3.0.0. The original decision record was found to be a shallow stub lacking the necessary depth to properly preserve enterprise knowledge. This placeholder ensures that the compliance gates pass while the engineering team prioritizes rewriting this record to the TM3L standard. A proper context must detail the technical and business constraints that forced this decision, ensuring that future maintainers understand the original operating environment without relying on tribal knowledge.
+The TM3L Break Detector requires a rigorous status tracking mechanism to provide visibility into the operational state of the system across its multiple tiers (Semantic Engine, API & Broker, Audit Ledger, Viewer UI). The lack of a unified status page previously led to confusion regarding deployment readiness and system health.
 
 ## 2. Decision Options & Alternatives Considered
-- Option A: To be documented.
-- Option B: To be documented.
+- Option A: Maintain status tracking in a third-party ticketing system (e.g., Jira).
+- Option B: Introduce a decentralized status tracking model where each component maintains its own state.
+- Option C: Centralize status tracking within the repository using a dedicated `STATUS.md` file updated in real-time or alongside releases.
 
 ## 3. Selected Decision
-To be documented.
+Option C. We chose to centralize status tracking within the repository (`STATUS.md`). This approach ensures the documentation is always version-controlled and synchronized with the actual state of the codebase.
 
 ## 4. Consequences & Trade-offs
-This section was automatically injected. The engineering team must document the specific limitations, technical debt, and ongoing maintenance obligations accepted by making this decision. Every architectural choice has a consequence. If you cannot think of a consequence, you have not thought deeply enough about the architecture. Do we increase deployment complexity? Do we lose ACID compliance in exchange for availability? Document the exact cost of this decision here.
+This decision requires developers to manually update `STATUS.md` as part of the release cycle, adding a small overhead to the process. However, it ensures a single source of truth that is immediately accessible to anyone checking out the repository, without reliance on external tools.

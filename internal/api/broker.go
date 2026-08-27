@@ -6,17 +6,22 @@ import (
 	"sync"
 )
 
+type BrokerEvent struct {
+	ProjectID string
+	Payload   []byte
+}
+
 type Broker struct {
 	mu sync.Mutex
 	// map[projectID]map[clientChan]bool
 	clients  map[string]map[chan []byte]bool
-	Notifier chan []byte
+	Notifier chan BrokerEvent
 }
 
 func NewBroker() *Broker {
 	b := &Broker{
 		clients:  make(map[string]map[chan []byte]bool),
-		Notifier: make(chan []byte, 100),
+		Notifier: make(chan BrokerEvent, 100),
 	}
 	go b.listen()
 	return b
@@ -27,13 +32,10 @@ func (b *Broker) listen() {
 		select {
 		case s := <-b.Notifier:
 			b.mu.Lock()
-			// Currently broadcasting to all for fallback, but should route by project ID.
-			// For simplicity in this demo, we'll just broadcast to all connected clients
-			// across all projects, but the architecture supports project_id lookup.
-			for _, projectClients := range b.clients {
+			if projectClients, ok := b.clients[s.ProjectID]; ok {
 				for clientMessageChan := range projectClients {
 					select {
-					case clientMessageChan <- s:
+					case clientMessageChan <- s.Payload:
 					default:
 					}
 				}

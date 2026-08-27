@@ -48,7 +48,11 @@ By explicit design, the aesthetic will invoke a **Soft Cyberpunk / Modern Hacker
 - This serves as a humorous juxtaposition to the highly advanced, rigid Rust AST semantic logic powering the backend.
 
 ## 2. Decision Options & Alternatives Considered
-To be documented.
+- Option A: A purely utilitarian, bootstrap-style interface optimized solely for density.
+- Option B: A "Soft Cyberpunk / Modern Hacker" aesthetic with real-time SSE listening capabilities and drill-down JSON exploration.
+
+## 3. Selected Decision
+Option B. We opted for the "Soft Cyberpunk / Modern Hacker" theme to juxtapose the rigid backend logic while providing critical features like real-time CI/CD monitoring and interactive AST diff sandboxing.
 
 ## 4. Consequences & Trade-offs
-To be documented.
+The chosen aesthetic (dark mode, neon highlights, custom scrollbars) may not align with traditional corporate UI standards and could require slightly more CSS maintenance (via Tailwind). The dual-mode nature (Monitor vs Sandbox) also increases React state complexity.

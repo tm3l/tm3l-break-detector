@@ -29,10 +29,15 @@ The product acts as an advanced "Prompt Engineer as a Service." It will analyze 
 3. **Markdown Export:** The final generated prompt must be delivered to the user as a structured Markdown document with 1-click copy/download capabilities.
 
 ## 2. Decision Options & Alternatives Considered
-To be documented.
+- Option A: Build a proprietary cloud compilation engine to execute scripts automatically.
+- Option B: Rely on users manually writing prompts for their LLM based on AST findings.
+- Option C: Provide a "Prompt Engineer as a Service" feature that synthetically generates a deterministic Markdown prompt containing AST facts for the user to pass to their LLM.
+
+## 3. Selected Decision
+Option C. By abstracting the prompt generation process, we leverage external LLMs for the actual script generation while ensuring they receive flawless, deterministic structural context.
 
 ## 4. Consequences & Trade-offs
-To be documented.
+This approach shifts the execution responsibility to external LLMs (Claude/Gemini), meaning we cannot guarantee the final script's execution success if the external LLM hallucinates despite our prompt. It also requires users to copy-paste the prompt, introducing minor friction, but saves massive engineering costs by avoiding the construction of a custom cloud build environment.
 
 ## 5. Product Visualizations
 

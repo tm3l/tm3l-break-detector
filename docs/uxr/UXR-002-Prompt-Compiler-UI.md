@@ -41,7 +41,11 @@ When synthesis is complete, the resulting prompt will be displayed in a distinct
 - The aesthetic must strictly adhere to the Soft Cyberpunk/Hacker design system established in `UXR-001`.
 
 ## 2. Decision Options & Alternatives Considered
-To be documented.
+- Option A: Embed the Prompt Compiler inside the existing Interactive Sandbox mode.
+- Option B: Create a distinct third global mode ("LLM Prompt Compiler") specifically tailored to code input and generation parameters.
+
+## 3. Selected Decision
+Option B. Creating a dedicated global mode ensures the UI remains uncluttered and the user's intent is clearly separated from governance and AST diff monitoring.
 
 ## 4. Consequences & Trade-offs
-To be documented.
+Adding a third mode to the top-level navigation requires users to understand the conceptual difference between the sandbox and the prompt compiler. Furthermore, supporting robust syntax highlighting in a large textarea introduces additional bundle size overhead (e.g., loading Monaco or similar editors).
