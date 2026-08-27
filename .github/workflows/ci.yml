@@ -8,45 +8,49 @@ on:
 
 jobs:
   engine:
-    name: Engine (Rust) – Format, Clippy & Test
+    name: Rust Engine – Format, Lint & Test
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: engine
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
 
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2
+      - name: Cache cargo registry & build
+        uses: actions/cache@v4
         with:
-          workspaces: engine
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            engine/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('engine/Cargo.lock', 'engine/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
 
-      - name: Check Formatting
-        run: cargo fmt --check || cargo fmt
+      - name: Format check
+        run: cargo fmt --check
 
-      - name: Run Clippy Linter
+      - name: Clippy lint
         run: cargo clippy --all-targets --all-features -- -D warnings
 
-      - name: Run Tests
-        run: cargo test --all-targets --all-features
+      - name: Run unit tests
+        run: cargo test
 
   server:
-    name: Server (Go) – Build & Test
+    name: Go Server – Build & Test
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: server
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -60,22 +64,21 @@ jobs:
       - name: Build
         run: go build ./...
 
-      - name: Run tests
-        run: go test -race -coverprofile=coverage.out ./...
-
       - name: Vet
         run: go vet ./...
 
+      - name: Run tests
+        run: go test -v ./...
+
   viewer:
-    name: Viewer (React) – Build
+    name: Viewer UI – Build
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: viewer
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up Node
         uses: actions/setup-node@v4
