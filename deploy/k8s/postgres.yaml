@@ -1,0 +1,74 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tm3l-postgres-pvc
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tm3l-postgres-secret
+  namespace: default
+type: Opaque
+stringData:
+  POSTGRES_USER: tm3l_user
+  POSTGRES_PASSWORD: tm3l_password
+  POSTGRES_DB: tm3l_break_detector
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tm3l-postgres
+  namespace: default
+  labels:
+    app: tm3l-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tm3l-postgres
+  template:
+    metadata:
+      labels:
+        app: tm3l-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - secretRef:
+                name: tm3l-postgres-secret
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: postgres-data
+          persistentVolumeClaim:
+            claimName: tm3l-postgres-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tm3l-postgres-svc
+  namespace: default
+spec:
+  selector:
+    app: tm3l-postgres
+  ports:
+    - port: 5432
+      targetPort: 5432

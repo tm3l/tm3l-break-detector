@@ -1,17 +1,19 @@
 import React from 'react';
-import { SplitSquareHorizontal, FileJson, Terminal, Upload, AlignLeft, Trash2, Play } from 'lucide-react';
+import { SplitSquareHorizontal, FileJson, Terminal, Upload, AlignLeft, Trash2, Play, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { DiffEditor } from '@monaco-editor/react';
 import { BreakingChange } from '../types';
 
+export type SandboxMode = 'OPENAPI' | 'PYTHON' | 'GO' | 'TYPESCRIPT';
+
 interface InteractiveSandboxProps {
-  sandboxMode: 'OPENAPI' | 'PYTHON';
-  setSandboxMode: (mode: 'OPENAPI' | 'PYTHON') => void;
+  sandboxMode: SandboxMode;
+  setSandboxMode: (mode: SandboxMode) => void;
   sandboxBase: string;
   setSandboxBase: React.Dispatch<React.SetStateAction<string>>;
   sandboxTarget: string;
   setSandboxTarget: React.Dispatch<React.SetStateAction<string>>;
-  pythonCode: string;
-  setPythonCode: React.Dispatch<React.SetStateAction<string>>;
+  sourceCode: string;
+  setSourceCode: React.Dispatch<React.SetStateAction<string>>;
   executeSandboxDiff: () => void;
   isSubmitting: boolean;
   loadSample: (sample: string) => void;
@@ -25,8 +27,8 @@ export function InteractiveSandbox({
   setSandboxBase,
   sandboxTarget,
   setSandboxTarget,
-  pythonCode,
-  setPythonCode,
+  sourceCode,
+  setSourceCode,
   executeSandboxDiff,
   isSubmitting,
   loadSample,
@@ -44,8 +46,12 @@ export function InteractiveSandbox({
     } else if (code.trim() && !code.includes('{') && code.includes(':')) {
       format = 'YAML';
       if (code.includes('\t')) valid = false; 
-    } else if (code.trim() && (code.includes('import') || code.includes('print'))) {
+    } else if (sandboxMode === 'PYTHON') {
       format = 'Python';
+    } else if (sandboxMode === 'GO') {
+      format = 'Go';
+    } else if (sandboxMode === 'TYPESCRIPT') {
+      format = 'TypeScript';
     }
     
     return { format, valid, words, lines };
@@ -53,7 +59,7 @@ export function InteractiveSandbox({
 
   const baseStats = getFormatAndValidation(sandboxBase);
   const targetStats = getFormatAndValidation(sandboxTarget);
-  const pyStats = getFormatAndValidation(pythonCode);
+  const codeStats = getFormatAndValidation(sourceCode);
 
   const formatJSON = (setter: React.Dispatch<React.SetStateAction<string>>, code: string) => {
     try {
@@ -83,7 +89,19 @@ export function InteractiveSandbox({
     }
   };
 
-  const pythonDiff = sandboxMode === 'PYTHON' ? breakingChanges.find(c => c.oldCode && c.newCode && c.path === 'main.py') : null;
+  const monacoLanguage = sandboxMode === 'PYTHON' ? 'python' : sandboxMode === 'GO' ? 'go' : sandboxMode === 'TYPESCRIPT' ? 'typescript' : 'json';
+
+  const activeDiff = sandboxMode !== 'OPENAPI' && breakingChanges.length > 0 ? breakingChanges.find(c => c.oldCode && c.newCode) : null;
+
+  const actionButtonText = () => {
+    if (isSubmitting) return 'Running AST Inspection...';
+    switch (sandboxMode) {
+      case 'OPENAPI': return 'Run Semantic Diff';
+      case 'PYTHON': return 'Audit Python Deprecations';
+      case 'GO': return 'Audit Go Deprecations';
+      case 'TYPESCRIPT': return 'Audit TypeScript Code';
+    }
+  };
 
   return (
     <div className="animate-fade-in-up space-y-6">
@@ -95,11 +113,13 @@ export function InteractiveSandbox({
             </h2>
             <select 
               value={sandboxMode}
-              onChange={(e) => setSandboxMode(e.target.value as 'OPENAPI' | 'PYTHON')}
+              onChange={(e) => setSandboxMode(e.target.value as SandboxMode)}
               className="bg-[#090c10] border border-cyan-500/30 text-cyan-400 text-xs px-3 py-1.5 rounded focus:outline-none uppercase font-bold tracking-widest"
             >
               <option value="OPENAPI">OpenAPI Contract Diff</option>
-              <option value="PYTHON">Python 2 -{'>'} 3 Code Breaker</option>
+              <option value="PYTHON">Python 2 -{'>'} 3 Migration</option>
+              <option value="GO">Go Deprecation Audit</option>
+              <option value="TYPESCRIPT">TypeScript Modernization</option>
             </select>
           </div>
           <div className="flex items-center gap-3">
@@ -112,13 +132,15 @@ export function InteractiveSandbox({
               <option value="OpenAPI: Breaking Required Field">OpenAPI: Breaking Required Field</option>
               <option value="OpenAPI: Breaking Enum Removal">OpenAPI: Breaking Enum Removal</option>
               <option value="OpenAPI: Removed Endpoint">OpenAPI: Removed Endpoint</option>
-              <option value="Python 2 -> Python 3: Legacy EVE-style Code Migration">Python 2 -{'>'} Python 3: Legacy EVE-style Code Migration</option>
+              <option value="Python 2 -> Python 3: Legacy EVE-style Code Migration">Python 2 -{'>'} 3: Legacy urllib2 & print</option>
+              <option value="Go: Migrate deprecated io/ioutil package">Go: Migrate deprecated io/ioutil</option>
+              <option value="TypeScript: Migrate legacy var keyword">TypeScript: Modernize var to const/let</option>
             </select>
             <button onClick={() => {
-              setSandboxBase(''); setSandboxTarget(''); setPythonCode('');
+              setSandboxBase(''); setSandboxTarget(''); setSourceCode('');
             }} className="text-[10px] text-slate-400 hover:text-rose-400 uppercase font-bold flex items-center gap-1 border border-slate-700 px-3 py-2 rounded"><Trash2 size={12}/> Clear</button>
             <button onClick={executeSandboxDiff} disabled={isSubmitting} className="flex items-center gap-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 px-6 py-2.5 text-xs font-bold uppercase transition-all disabled:opacity-50 rounded">
-              <Play size={14} /> {isSubmitting ? 'Running...' : sandboxMode === 'OPENAPI' ? 'Run Semantic Diff' : 'Audit Python Deprecations'}
+              <Play size={14} /> {actionButtonText()}
             </button>
           </div>
         </div>
@@ -171,44 +193,80 @@ export function InteractiveSandbox({
             </div>
           </div>
         ) : (
-          <div>
+          <div className="space-y-4">
             <div 
               onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => handleDrop(e, setPythonCode)}
+              onDrop={(e) => handleDrop(e, setSourceCode)}
             >
               <div className="flex justify-between items-center mb-2">
-                <h3 className="text-xs font-bold text-slate-300 uppercase tracking-widest flex items-center gap-2"><Terminal size={12}/> Source Code (Python)</h3>
+                <h3 className="text-xs font-bold text-slate-300 uppercase tracking-widest flex items-center gap-2">
+                  <Terminal size={12}/> Source Code ({sandboxMode})
+                </h3>
                 <div className="flex items-center gap-2">
-                  <span className="text-[9px] px-2 py-0.5 rounded uppercase font-bold tracking-widest bg-emerald-500/20 text-emerald-400">{pyStats.format}</span>
-                  <label className="text-[9px] cursor-pointer text-slate-400 hover:text-cyan-300 p-1 border border-slate-700 rounded"><Upload size={12}/><input type="file" className="hidden" onChange={(e) => handleFileUpload(e, setPythonCode)} /></label>
+                  <span className="text-[9px] px-2 py-0.5 rounded uppercase font-bold tracking-widest bg-emerald-500/20 text-emerald-400">{codeStats.format}</span>
+                  <label className="text-[9px] cursor-pointer text-slate-400 hover:text-cyan-300 p-1 border border-slate-700 rounded"><Upload size={12}/><input type="file" className="hidden" onChange={(e) => handleFileUpload(e, setSourceCode)} /></label>
                 </div>
               </div>
-              {pythonDiff ? (
-                <div className="w-full h-[400px] border border-cyan-500/50 rounded overflow-hidden">
+              {activeDiff ? (
+                <div className="w-full h-[400px] border border-cyan-500/50 rounded overflow-hidden shadow-inner">
                   <DiffEditor
                     height="100%"
-                    language="python"
-                    original={pythonDiff.oldCode}
-                    modified={pythonDiff.newCode}
+                    language={monacoLanguage}
+                    original={activeDiff.oldCode}
+                    modified={activeDiff.newCode}
                     theme="vs-dark"
                     options={{ readOnly: true, minimap: { enabled: false } }}
                   />
                 </div>
               ) : (
                 <textarea 
-                  value={pythonCode} onChange={e => setPythonCode(e.target.value)}
+                  value={sourceCode} onChange={e => setSourceCode(e.target.value)}
                   className="w-full h-[400px] bg-[#090c10] border border-slate-700 rounded p-4 text-slate-300 font-mono text-xs focus:outline-none focus:border-cyan-500/50 resize-none"
                   spellCheck={false}
                 />
               )}
               <div className="text-[9px] text-slate-500 mt-1 flex justify-end gap-3 uppercase font-bold tracking-widest">
-                <span>{pyStats.lines} Lines</span>
-                <span>{pyStats.words} Words</span>
+                <span>{codeStats.lines} Lines</span>
+                <span>{codeStats.words} Words</span>
               </div>
             </div>
+
+            {breakingChanges.length > 0 && (
+              <div className="border border-slate-800 bg-[#0a0e14] p-4 rounded space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-widest text-slate-300 flex items-center gap-2">
+                  <AlertTriangle size={14} className="text-amber-400" />
+                  AST Migration Findings ({breakingChanges.length})
+                </h4>
+                <div className="space-y-2">
+                  {breakingChanges.map((change, idx) => (
+                    <div key={idx} className="p-3 bg-[#121820] border border-slate-700 rounded text-xs">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest ${
+                          change.severity === 'BREAKING' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40' : 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                        }`}>
+                          {change.severity || 'BREAKING'}
+                        </span>
+                        <span className="font-mono text-[10px] text-slate-500">{change.line || change.path}</span>
+                      </div>
+                      <p className="text-slate-300 font-medium">{change.description}</p>
+                      {change.citation && (
+                        <p className="text-[10px] text-cyan-400/80 mt-1 font-mono">{change.citation}</p>
+                      )}
+                      {change.proposed_fix && (
+                        <div className="mt-2 text-[11px] font-mono bg-[#090c10] p-2 rounded border border-emerald-500/20 text-emerald-400 flex items-center gap-2">
+                          <CheckCircle2 size={12} className="text-emerald-400 flex-shrink-0" />
+                          <span>Fix: {change.proposed_fix}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
     </div>
   );
 }
+

@@ -204,3 +204,45 @@ func TestCodeDiffEndpoint(t *testing.T) {
 	}
 }
 
+func TestListAndGetDiffEndpoints(t *testing.T) {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		dsn = "postgres://tm3l_user:tm3l_password@localhost:5432/tm3l_break_detector?sslmode=disable"
+	}
+
+	store, err := db.NewPostgresStore(dsn)
+	if err != nil {
+		t.Skipf("Skipping integration test: database not reachable (%v)", err)
+	}
+
+	broker := NewBroker()
+	server := NewServer(store, broker)
+
+	// 1. Test GET /api/diffs
+	req, _ := http.NewRequest("GET", "/api/diffs", nil)
+	rr := httptest.NewRecorder()
+	server.Router.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("Expected 200 OK from GET /api/diffs, got %d", rr.Code)
+	}
+
+	var runs []*models.DiffRun
+	if err := json.NewDecoder(rr.Body).Decode(&runs); err != nil {
+		t.Fatalf("Failed to decode diff runs list: %v", err)
+	}
+
+	if len(runs) > 0 {
+		// 2. Test GET /api/diffs/{id}
+		firstID := runs[0].ID
+		getReq, _ := http.NewRequest("GET", "/api/diffs/"+firstID, nil)
+		getRR := httptest.NewRecorder()
+		server.Router.ServeHTTP(getRR, getReq)
+
+		if getRR.Code != http.StatusOK {
+			t.Fatalf("Expected 200 OK from GET /api/diffs/%s, got %d", firstID, getRR.Code)
+		}
+	}
+}
+
+

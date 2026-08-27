@@ -12,6 +12,9 @@ type Store interface {
 	CreateProject(name string) (*models.Project, error)
 	InsertDiffRun(run *models.DiffRun) error
 	OverrideDiffRun(override *models.AuditOverride) error
+	ListDiffRuns(projectID string, limit int) ([]*models.DiffRun, error)
+	GetDiffRun(id string) (*models.DiffRun, error)
+	GetAuditOverride(diffRunID string) (*models.AuditOverride, error)
 }
 
 type PostgresStore struct {
@@ -77,3 +80,74 @@ func (s *PostgresStore) OverrideDiffRun(override *models.AuditOverride) error {
 
 	return tx.Commit()
 }
+
+func (s *PostgresStore) ListDiffRuns(projectID string, limit int) ([]*models.DiffRun, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 50
+	}
+	var rows *sql.Rows
+	var err error
+	if projectID != "" {
+		query := `
+			SELECT id, project_id, commit_sha, status, breaking_count, dangerous_count, raw_diff_payload, created_at
+			FROM diff_runs
+			WHERE project_id = $1
+			ORDER BY created_at DESC
+			LIMIT $2
+		`
+		rows, err = s.db.Query(query, projectID, limit)
+	} else {
+		query := `
+			SELECT id, project_id, commit_sha, status, breaking_count, dangerous_count, raw_diff_payload, created_at
+			FROM diff_runs
+			ORDER BY created_at DESC
+			LIMIT $1
+		`
+		rows, err = s.db.Query(query, limit)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var runs []*models.DiffRun
+	for rows.Next() {
+		r := &models.DiffRun{}
+		if err := rows.Scan(&r.ID, &r.ProjectID, &r.CommitSHA, &r.Status, &r.BreakingCount, &r.DangerousCount, &r.RawDiffPayload, &r.CreatedAt); err != nil {
+			return nil, err
+		}
+		runs = append(runs, r)
+	}
+	return runs, nil
+}
+
+func (s *PostgresStore) GetDiffRun(id string) (*models.DiffRun, error) {
+	query := `
+		SELECT id, project_id, commit_sha, status, breaking_count, dangerous_count, raw_diff_payload, created_at
+		FROM diff_runs
+		WHERE id = $1
+	`
+	r := &models.DiffRun{}
+	err := s.db.QueryRow(query, id).Scan(&r.ID, &r.ProjectID, &r.CommitSHA, &r.Status, &r.BreakingCount, &r.DangerousCount, &r.RawDiffPayload, &r.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
+func (s *PostgresStore) GetAuditOverride(diffRunID string) (*models.AuditOverride, error) {
+	query := `
+		SELECT id, diff_run_id, overridden_by, override_note, created_at
+		FROM audit_overrides
+		WHERE diff_run_id = $1
+		ORDER BY created_at DESC
+		LIMIT 1
+	`
+	o := &models.AuditOverride{}
+	err := s.db.QueryRow(query, diffRunID).Scan(&o.ID, &o.DiffRunID, &o.OverriddenBy, &o.OverrideNote, &o.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return o, nil
+}
+

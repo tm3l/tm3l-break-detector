@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tm3l-viewer
+  namespace: default
+  labels:
+    app: tm3l-viewer
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: tm3l-viewer
+  template:
+    metadata:
+      labels:
+        app: tm3l-viewer
+    spec:
+      containers:
+        - name: viewer
+          image: tm3l/break-detector-viewer:latest
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tm3l-viewer-svc
+  namespace: default
+spec:
+  selector:
+    app: tm3l-viewer
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tm3l-ingress
+  namespace: default
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: tm3l-server-svc
+                port:
+                  number: 8080
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: tm3l-viewer-svc
+                port:
+                  number: 80

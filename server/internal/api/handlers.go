@@ -2,6 +2,9 @@ package api
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -38,11 +41,46 @@ func (s *Server) routes() {
 
 	s.Router.Post("/api/login", s.handleLogin)
 
+	s.Router.Get("/api/diffs", s.handleListDiffs)
+	s.Router.Get("/api/diffs/{id}", s.handleGetDiff)
 	s.Router.With(RequireAPIKey).Post("/api/diffs", s.handleRunDiff)
 	s.Router.With(RequireJWT).Post("/api/diffs/{id}/override", s.handleOverrideDiff)
 	s.Router.Post("/api/prompt", s.handleGeneratePrompt)
 	s.Router.Post("/api/code-diff", s.handleCodeDiff)
 }
+
+func (s *Server) handleListDiffs(w http.ResponseWriter, r *http.Request) {
+	projectID := r.URL.Query().Get("project_id")
+	runs, err := s.store.ListDiffRuns(projectID, 50)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if runs == nil {
+		runs = []*models.DiffRun{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(runs)
+}
+
+func (s *Server) handleGetDiff(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	run, err := s.store.GetDiffRun(id)
+	if err != nil {
+		http.Error(w, "diff not found", http.StatusNotFound)
+		return
+	}
+
+	override, _ := s.store.GetAuditOverride(id)
+
+	resp := map[string]interface{}{
+		"diff":     run,
+		"override": override,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
 
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	var req struct {
@@ -177,15 +215,44 @@ func (s *Server) handleOverrideDiff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event, _ := json.Marshal(map[string]interface{}{"type": "diff_overridden", "diff_id": diffID})
+	event, _ := json.Marshal(map[string]interface{}{
+		"type":          "diff_overridden",
+		"diff_id":       diffID,
+		"overridden_by": userID,
+		"override_note": req.Note,
+		"timestamp":     time.Now().UTC().Format(time.RFC3339),
+	})
 	s.broker.Notifier <- event
 
-	// Dispatch Webhook to close the CI/CD loop (async)
-	go http.Post("http://localhost:8080/mock-webhook", "application/json", bytes.NewBuffer(event))
+	// Dispatch Webhook to close the CI/CD loop (async with HMAC signature)
+	go dispatchWebhook(event)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "success", "override_id": override.ID, "overridden_by": userID})
 }
+
+func dispatchWebhook(payload []byte) {
+	webhookURL := os.Getenv("WEBHOOK_URL")
+	if webhookURL == "" {
+		webhookURL = "http://localhost:8080/mock-webhook"
+	}
+
+	req, err := http.NewRequest("POST", webhookURL, bytes.NewBuffer(payload))
+	if err != nil {
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	// Calculate HMAC-SHA256 signature for non-repudiation
+	mac := hmac.New(sha256.New, JWTSecret)
+	mac.Write(payload)
+	signature := hex.EncodeToString(mac.Sum(nil))
+	req.Header.Set("X-TM3L-Signature-256", "sha256="+signature)
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	client.Do(req)
+}
+
 
 func (s *Server) handleGeneratePrompt(w http.ResponseWriter, r *http.Request) {
 	var req struct {
