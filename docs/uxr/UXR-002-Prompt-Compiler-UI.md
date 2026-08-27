@@ -39,3 +39,9 @@ When synthesis is complete, the resulting prompt will be displayed in a distinct
 - The viewer must support raw text copying via a **"Copy to Clipboard"** button.
 - A **"Download .md"** button must be provided to save the prompt locally.
 - The aesthetic must strictly adhere to the Soft Cyberpunk/Hacker design system established in `UXR-001`.
+
+## 2. Decision Options & Alternatives Considered
+To be documented.
+
+## 4. Consequences & Trade-offs
+To be documented.

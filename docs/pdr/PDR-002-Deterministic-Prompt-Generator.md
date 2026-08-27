@@ -27,3 +27,9 @@ The product acts as an advanced "Prompt Engineer as a Service." It will analyze 
 1. **User Customization:** Users must be able to select their desired compilation targets via the UI (e.g., Local CLI only, Dockerfile, or GitHub Actions CI/CD). We will not force a single strategy on the user.
 2. **Deterministic Context Injection:** The generated prompt must inject absolute facts discovered by the underlying Rust engine (e.g., "The AST found dependencies X and Y. You must include them as hidden imports.").
 3. **Markdown Export:** The final generated prompt must be delivered to the user as a structured Markdown document with 1-click copy/download capabilities.
+
+## 2. Decision Options & Alternatives Considered
+To be documented.
+
+## 4. Consequences & Trade-offs
+To be documented.

@@ -46,3 +46,9 @@ By explicit design, the aesthetic will invoke a **Soft Cyberpunk / Modern Hacker
 - **Vibe:** A tongue-in-cheek blend of 90s hacker culture combined with sleek, highly polished modern developer tooling.
 - **Styling:** Deep slate/charcoal backgrounds (`bg-[#0d1117]`), muted neon text (`text-emerald-400`, `cyan-400`, `rose-400`), monospaced fonts (`font-mono`), rounded borders, syntax-highlighted JSON, and custom scrollbars.
 - This serves as a humorous juxtaposition to the highly advanced, rigid Rust AST semantic logic powering the backend.
+
+## 2. Decision Options & Alternatives Considered
+To be documented.
+
+## 4. Consequences & Trade-offs
+To be documented.
