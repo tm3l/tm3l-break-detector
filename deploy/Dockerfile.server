@@ -7,7 +7,7 @@ COPY engine/src ./src
 RUN cargo build --release
 
 # Stage 2: Build Go Server
-FROM golang:1.23-alpine AS go-builder
+FROM golang:1.27-alpine AS go-builder
 WORKDIR /app/server
 COPY server/go.mod server/go.sum* ./
 RUN go mod download
