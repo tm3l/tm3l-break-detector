@@ -7,10 +7,10 @@
 
 | Layer | Technology | Status | Verification |
 | :--- | :--- | :--- | :--- |
-| **Semantic Engine** | Rust (`openapiv3`, `regex`, `serde_yaml`) | **Complete** | 15 unit tests passing, clippy & rustfmt clean |
-| **API & Broker** | Go 1.23 (`chi`, `jwt`, `lib/pq`) | **Complete** | Async worker pool, multi-tenant SSE, JWT non-repudiation |
+| **Semantic Engine** | Rust (`openapiv3`, `tree-sitter`, `serde_yaml`) | **Complete** | Deterministic AST parsing (Python, Go, TS), 18 unit/integration tests passing, clippy clean |
+| **API & Broker** | Go 1.23 (`chi`, `jwt`, `lib/pq`) | **Complete** | Multi-language AST diffs, static analysis & deterministic prompt synthesis, async worker pool, SSE |
 | **Audit Ledger** | PostgreSQL 17 | **Complete** | GIN indexing on AST JSONB, immutable audit table |
-| **Viewer UI** | React 19, TypeScript, Tailwind CSS, Vite | **Complete** | 3 modes: CI Monitor, Sandbox, Prompt Compiler |
+| **Viewer UI** | React 19, TypeScript, Tailwind CSS, Vite | **Complete** | Componentized UI (Monaco DiffEditor), Dockerized Playwright E2E automation |
 
 ## CI & Automated Governance
 - **GitHub Actions CI**: Enabled (Rust toolchain, Go tests, Viewer build on Node 22).

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/tm3l/tm3l-break-detector/internal/db"
 	"github.com/tm3l/tm3l-break-detector/internal/models"
 )
@@ -105,3 +106,101 @@ func TestAPIContracts(t *testing.T) {
 		}
 	}
 }
+
+func TestPromptEndpoint(t *testing.T) {
+	broker := NewBroker()
+	server := &Server{
+		broker: broker,
+		Router: chi.NewRouter(),
+	}
+	server.routes()
+
+	reqBody, _ := json.Marshal(map[string]interface{}{
+		"source_code": "import urllib2\nprint 'hello'",
+		"targets": map[string]bool{
+			"docker": true,
+			"cli":    true,
+		},
+	})
+	req, _ := http.NewRequest("POST", "/api/prompt", bytes.NewBuffer(reqBody))
+	rr := httptest.NewRecorder()
+	server.Router.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("Expected 200 OK, got %d. Body: %s", rr.Code, rr.Body.String())
+	}
+
+	var resp struct {
+		Markdown string `json:"markdown"`
+	}
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+	if resp.Markdown == "" {
+		t.Fatalf("Expected non-empty markdown prompt")
+	}
+}
+
+func TestCodeDiffEndpoint(t *testing.T) {
+	broker := NewBroker()
+	server := &Server{
+		broker: broker,
+		Router: chi.NewRouter(),
+	}
+	server.routes()
+
+	tests := []struct {
+		name     string
+		lang     string
+		code     string
+		expected string
+	}{
+		{
+			name:     "Python migration",
+			lang:     "python",
+			code:     "print 'Hello World'",
+			expected: "queued",
+		},
+		{
+			name:     "Go migration",
+			lang:     "go",
+			code:     "package main\nimport \"io/ioutil\"",
+			expected: "queued",
+		},
+		{
+			name:     "TypeScript migration",
+			lang:     "typescript",
+			code:     "var x = 1;",
+			expected: "queued",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reqBody, _ := json.Marshal(map[string]interface{}{
+				"source_code": tt.code,
+				"mode":        "code_migration",
+				"language":    tt.lang,
+			})
+			req, _ := http.NewRequest("POST", "/api/code-diff", bytes.NewBuffer(reqBody))
+			rr := httptest.NewRecorder()
+			server.Router.ServeHTTP(rr, req)
+
+			if rr.Code != http.StatusAccepted {
+				t.Fatalf("Expected 202 Accepted, got %d. Body: %s", rr.Code, rr.Body.String())
+			}
+
+			var resp map[string]string
+			if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+				t.Fatalf("Failed to decode response: %v", err)
+			}
+			if resp["status"] != tt.expected {
+				t.Fatalf("Expected status %s, got %s", tt.expected, resp["status"])
+			}
+			if resp["language"] != tt.lang {
+				t.Fatalf("Expected language %s, got %s", tt.lang, resp["language"])
+			}
+		})
+	}
+}
+

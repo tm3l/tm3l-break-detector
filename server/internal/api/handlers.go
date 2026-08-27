@@ -220,7 +220,8 @@ func (s *Server) handleGeneratePrompt(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleCodeDiff(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		SourceCode string `json:"source_code"`
-		Mode       string `json:"mode"` // "python_migration" | future modes
+		Mode       string `json:"mode"`     // "python_migration" | "code_migration"
+		Language   string `json:"language"` // "python" | "go" | "typescript"
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -231,29 +232,47 @@ func (s *Server) handleCodeDiff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.Mode == "" {
-		req.Mode = "python_migration"
+		req.Mode = "code_migration"
+	}
+	if req.Language == "" {
+		req.Language = "python"
+	}
+
+	ext := ".py"
+	switch req.Language {
+	case "go", "golang":
+		ext = ".go"
+	case "typescript", "ts":
+		ext = ".ts"
+	case "javascript", "js":
+		ext = ".js"
 	}
 
 	// Write code to a temp file so the Rust engine can consume it
-	tmpFile, err := os.CreateTemp("", "code-*.py")
+	tmpFile, err := os.CreateTemp("", "code-*"+ext)
 	if err != nil {
 		http.Error(w, "Failed to create temp file", http.StatusInternalServerError)
 		return
 	}
-	defer os.Remove(tmpFile.Name())
 	tmpFile.WriteString(req.SourceCode)
 	tmpFile.Close()
 
-	// Queue a special Python-migration diff job
+	// Queue a code-diff job
 	JobQueue <- DiffJob{
 		ProjectID:  "code-diff",
 		CommitSHA:  "manual-code-diff",
-		BaseFile:   tmpFile.Name(), // unused in python_migration mode
+		BaseFile:   tmpFile.Name(),
 		TargetFile: tmpFile.Name(),
 		Mode:       req.Mode,
+		Language:   req.Language,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(map[string]string{"status": "queued", "mode": req.Mode})
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":   "queued",
+		"mode":     req.Mode,
+		"language": req.Language,
+	})
 }
+

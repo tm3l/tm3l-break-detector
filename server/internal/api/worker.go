@@ -16,7 +16,8 @@ type DiffJob struct {
 	CommitSHA  string
 	BaseFile   string
 	TargetFile string
-	Mode       string // "openapi" | "python_migration"
+	Mode       string // "openapi" | "python_migration" | "code_migration"
+	Language   string // "python", "go", "typescript"
 }
 
 var JobQueue = make(chan DiffJob, 100)
@@ -36,8 +37,12 @@ func processJob(store db.Store, broker *Broker, job DiffJob) {
 	defer os.Remove(job.TargetFile)
 
 	var cmd *exec.Cmd
-	if job.Mode == "python_migration" {
-		cmd = exec.Command("./break-detector-engine", "--mode", "python_migration", "--target", job.TargetFile)
+	if job.Mode == "python_migration" || job.Mode == "code_migration" {
+		lang := job.Language
+		if lang == "" {
+			lang = "python"
+		}
+		cmd = exec.Command("./break-detector-engine", "--mode", "code_migration", "--language", lang, "--target", job.TargetFile)
 	} else {
 		cmd = exec.Command("./break-detector-engine", "--base", job.BaseFile, "--target", job.TargetFile)
 	}

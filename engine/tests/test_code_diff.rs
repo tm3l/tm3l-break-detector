@@ -72,6 +72,7 @@ fn test_long_int() {
 #[test]
 fn test_clean_python3_code() {
     let code = r#"
+# print "this is just a comment, not code"
 def main():
     name = input("Enter name: ")
     for i in range(10):
@@ -83,6 +84,50 @@ if __name__ == "__main__":
     let result = check_python_migration(code);
     assert_eq!(
         result.summary.breaking, 0,
-        "Clean Python 3 should have zero breaking changes"
+        "Clean Python 3 with print in comments should have zero breaking changes"
     );
+}
+
+#[test]
+fn test_apply_builtin() {
+    let code = "result = apply(my_func, args)";
+    let result = check_python_migration(code);
+    assert_eq!(result.summary.breaking, 1);
+    assert!(result.changes[0].proposed_fix.contains("my_func(*args)"));
+}
+
+#[test]
+fn test_go_code_migration() {
+    use break_detector_engine::code_diff::check_code_migration;
+    let go_code = r#"
+package main
+
+import (
+    "fmt"
+    "io/ioutil"
+)
+
+func main() {
+    data, _ := ioutil.ReadFile("test.txt")
+    fmt.Println(string(data))
+}
+"#;
+    let result = check_code_migration(go_code, "go");
+    assert!(result.changes.iter().any(|c| c.description.contains("io/ioutil")));
+}
+
+#[test]
+fn test_typescript_code_migration() {
+    use break_detector_engine::code_diff::check_code_migration;
+    let ts_code = r#"
+export function calculateTotal(items: number[]): number {
+    var total = 0;
+    for (let i = 0; i < items.length; i++) {
+        total += items[i];
+    }
+    return total;
+}
+"#;
+    let result = check_code_migration(ts_code, "typescript");
+    assert!(result.changes.iter().any(|c| c.description.contains("Usage of 'var'")));
 }

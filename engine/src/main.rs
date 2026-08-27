@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use break_detector_engine::code_diff::check_python_migration;
+use break_detector_engine::code_diff::check_code_migration;
 use break_detector_engine::config::TM3LConfig;
 use break_detector_engine::diff::compare_specs;
 use clap::Parser;
@@ -19,6 +19,9 @@ struct Args {
 
     #[arg(long, default_value = "openapi")]
     mode: String,
+
+    #[arg(long, default_value = "python")]
+    language: String,
 }
 
 fn main() -> Result<()> {
@@ -36,10 +39,15 @@ fn main() -> Result<()> {
         TM3LConfig::default()
     };
 
-    if args.mode == "python_migration" {
+    if args.mode == "python_migration" || args.mode == "code_migration" {
         let target_file = fs::read_to_string(&args.target)
-            .with_context(|| format!("Failed to read Python file: {}", args.target))?;
-        let result = check_python_migration(&target_file);
+            .with_context(|| format!("Failed to read source file: {}", args.target))?;
+        let lang = if args.mode == "python_migration" && args.language == "python" {
+            "python"
+        } else {
+            &args.language
+        };
+        let result = check_code_migration(&target_file, lang);
         println!("{}", serde_json::to_string_pretty(&result)?);
         return Ok(());
     }
