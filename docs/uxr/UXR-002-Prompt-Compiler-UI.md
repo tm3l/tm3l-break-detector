@@ -1,7 +1,7 @@
 ---
 id: UXR-002
 title: LLM Prompt Compiler UI Design
-status: APPROVED
+status: "ACCEPTED"
 type: User Experience Record
 authors:
   - Antigravity AI
@@ -11,6 +11,7 @@ updated: 2026-08-26
 depends_on:
   - UXR-001
 tags: [ui, ux, prompt, markdown]
+version: "1.0.0"
 ---
 
 # UXR-002: LLM Prompt Compiler UI Design

@@ -1,7 +1,7 @@
 ---
 id: PDR-002
 title: Deterministic Prompt Generator (The LLM Compiler)
-status: APPROVED
+status: "ACCEPTED"
 type: Product Definition Record
 authors:
   - Antigravity AI
@@ -9,6 +9,7 @@ authors:
 created: 2026-08-26
 updated: 2026-08-26
 tags: [product, llm, orchestration, compiler]
+version: "1.0.0"
 ---
 
 # PDR-002: Deterministic Prompt Generator

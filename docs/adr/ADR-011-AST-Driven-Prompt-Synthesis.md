@@ -1,7 +1,7 @@
 ---
 id: ADR-011
 title: AST-Driven LLM Prompt Synthesis
-status: APPROVED
+status: "ACCEPTED"
 type: Architecture Decision Record
 authors:
   - Antigravity AI
@@ -9,6 +9,7 @@ authors:
 created: 2026-08-26
 updated: 2026-08-26
 tags: [architecture, rust, ast, llm]
+version: "1.0.0"
 ---
 
 # ADR-011: AST-Driven LLM Prompt Synthesis

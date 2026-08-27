@@ -1,7 +1,7 @@
 ---
 id: ADR-012
 title: Enterprise Scalability & Security Refactor
-status: APPROVED
+status: "ACCEPTED"
 type: Architecture Decision Record
 authors:
   - Antigravity AI
@@ -9,6 +9,7 @@ authors:
 created: 2026-08-26
 updated: 2026-08-26
 tags: [architecture, scalability, security, go, webhooks]
+version: "1.0.0"
 ---
 
 # ADR-012: Enterprise Scalability & Security Refactor

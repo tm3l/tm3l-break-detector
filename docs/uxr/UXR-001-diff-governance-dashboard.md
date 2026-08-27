@@ -1,7 +1,7 @@
 ---
 id: UXR-001
 title: Diff Governance Dashboard UI/UX
-status: APPROVED
+status: "ACCEPTED"
 type: User Experience Record
 authors:
   - Antigravity AI
@@ -12,6 +12,7 @@ depends_on:
   - PDR-001
   - ADR-010
 tags: [ui, ux, dashboard, governance, cyberpunk]
+version: "1.0.0"
 ---
 
 # UXR-001: Diff Governance Dashboard UI/UX

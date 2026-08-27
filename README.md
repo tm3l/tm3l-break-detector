@@ -67,3 +67,7 @@ Visit `http://localhost:5173` for the interactive diff viewer.
 
 ## 📚 Documentation
 See [`docs/architecture.md`](docs/architecture.md) for detailed internals.
+
+
+## Documentation
+- [Architecture & Specifications](docs/INDEX.md)
