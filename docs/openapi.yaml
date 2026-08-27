@@ -1,0 +1,173 @@
+openapi: 3.1.0
+info:
+  title: TM3L Break Detector API
+  description: Semantic API & Code Migration Governance Broker API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8081
+    description: Local development server
+paths:
+  /api/projects:
+    post:
+      summary: Create a new monitored project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  example: "Payment Gateway Service"
+      responses:
+        '201':
+          description: Project created successfully
+
+  /api/diffs:
+    post:
+      summary: Upload Base and Target OpenAPI specs for async semantic AST diffing
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [project_id, commit_sha, base_spec, target_spec]
+              properties:
+                project_id:
+                  type: string
+                  format: uuid
+                commit_sha:
+                  type: string
+                base_spec:
+                  type: string
+                  format: binary
+                target_spec:
+                  type: string
+                  format: binary
+      responses:
+        '202':
+          description: Diff job queued in worker pool
+
+  /api/code-diff:
+    post:
+      summary: Submit legacy code for migration analysis (e.g. Python 2 to 3)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [source_code]
+              properties:
+                source_code:
+                  type: string
+                mode:
+                  type: string
+                  default: "python_migration"
+      responses:
+        '202':
+          description: Code migration analysis queued
+
+  /api/prompt:
+    post:
+      summary: Deterministically synthesize an LLM system prompt from source code AST
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [source_code]
+              properties:
+                source_code:
+                  type: string
+                targets:
+                  type: object
+                  properties:
+                    docker:
+                      type: boolean
+                    cli:
+                      type: boolean
+                    github_actions:
+                      type: boolean
+                    kubernetes:
+                      type: boolean
+      responses:
+        '200':
+          description: LLM prompt synthesized with AST analysis
+
+  /api/diffs/{id}/override:
+    post:
+      summary: Acknowledge and override a breaking change in the audit ledger
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [note]
+              properties:
+                note:
+                  type: string
+                  example: "Coordinated sunset with downstream clients"
+      responses:
+        '200':
+          description: Override recorded and webhook dispatched
+
+  /api/events:
+    get:
+      summary: Server-Sent Events (SSE) stream for real-time diff events
+      parameters:
+        - name: project_id
+          in: query
+          schema:
+            type: string
+            default: "default"
+      responses:
+        '200':
+          description: Real-time SSE event stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+  /api/login:
+    post:
+      summary: Authenticate operator session and issue HttpOnly JWT cookie
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password:
+                  type: string
+      responses:
+        '200':
+          description: JWT cookie issued
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: tm3l_jwt
