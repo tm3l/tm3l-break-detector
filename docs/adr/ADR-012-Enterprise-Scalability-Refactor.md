@@ -43,3 +43,51 @@ The `RequireJWT` middleware will inject the authenticated user's identity claims
 - **Positive:** The system can now handle massive CI/CD concurrency via the worker pool.
 - **Positive:** Strict enterprise compliance is achieved via true multi-tenant data isolation and immutable non-repudiation.
 - **Negative:** Increased complexity in the Go backend state management (handling goroutine lifecycles and channel memory leaks).
+
+## 4. Architectural Visualizations
+
+This macro-architecture diagram illustrates the convergence of the four distinct enterprise scalability and security upgrades. It maps the asynchronous lifecycle of a CI/CD diff request, from non-blocking worker pools to multi-tenant SSE delivery, and finally to cryptographically secure webhook unblocking.
+
+```mermaid
+flowchart TD
+    %% Styling
+    classDef ci fill:#f9a03f,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef core fill:#00ADD8,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef auth fill:#ccffcc,stroke:#00aa00,stroke-width:2px;
+    classDef db fill:#336791,stroke:#fff,stroke-width:2px,color:#fff;
+    
+    CI([CI/CD Pipeline]):::ci
+    React([React Dashboard]):::ci
+    
+    subgraph GoBackend["TM3L Go Backend (Enterprise Scale)"]
+        direction TB
+        Ingress["API Ingress"]:::core
+        Channel{"Buffered Channel
+(chan DiffJob)"}
+        Workers["Goroutine Worker Pool
+(Async Execution)"]:::core
+        SSE["Topic-Based Pub/Sub
+(Multi-Tenant SSE)"]:::core
+        Override["POST /override
+(RequireJWT Middleware)"]:::auth
+        Webhook["Webhook Dispatcher"]:::core
+    end
+    
+    PG[(PostgreSQL
+Ledger & Non-Repudiation)]:::db
+    
+    %% Async Job Flow
+    CI -->|Submit Diff| Ingress
+    Ingress -->|202 Accepted| CI
+    Ingress -->|Enqueue| Channel
+    Channel -->|Consume| Workers
+    Workers -->|Save Result| PG
+    Workers -->|Broadcast to project_id| SSE
+    SSE -.->|Real-time Alert| React
+    
+    %% Override Flow
+    React -->|Approve (with JWT cookie)| Override
+    Override -->|Verify Claim & Log user_id| PG
+    Override -->|Trigger Resume| Webhook
+    Webhook -->|HTTP POST| CI
+```
