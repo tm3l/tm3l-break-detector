@@ -1,0 +1,9 @@
+# TM3L Baseline Gitleaks Ignore File
+# Automatically ignores dummy credentials found in test fixtures
+
+[allowlist]
+description = "Ignore test fixture directories"
+paths = [
+    '''tests/.*''',
+    '''test/.*'''
+]
