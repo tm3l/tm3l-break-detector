@@ -22,6 +22,21 @@ services:
         limits:
           memory: 512M
 
+  redis:
+    image: redis:7-alpine
+    container_name: break-detector-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
   server:
     build:
       context: .
@@ -29,6 +44,7 @@ services:
     container_name: break-detector-server
     environment:
       DATABASE_URL: "postgres://tm3l_user:tm3l_password@postgres:5432/tm3l_break_detector?sslmode=disable"
+      REDIS_ADDR: "redis:6379"
     ports:
       - "8081:8080"
     depends_on:
