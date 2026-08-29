@@ -69,7 +69,7 @@ func AnalyzeCode(sourceCode string) CodeAnalysis {
 		binPath = "./analyzer"
 	}
 
-	cmd := exec.Command(binPath, "--target", tmpFile.Name())
+	cmd := exec.Command(binPath, "--mode", "analyze", "--target", tmpFile.Name())
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &stdout
