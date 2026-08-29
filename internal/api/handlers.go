@@ -36,6 +36,7 @@ func NewServer(store db.Store, broker *Broker) *Server {
 }
 
 func (s *Server) routes() {
+	s.Router.Get("/health", s.handleHealthCheck)
 	s.Router.Get("/api/events", s.broker.ServeHTTP)
 	s.Router.Post("/api/projects", s.handleCreateProject)
 
@@ -49,8 +50,28 @@ func (s *Server) routes() {
 	s.Router.Post("/api/code-diff", s.handleCodeDiff)
 }
 
+func (s *Server) handleHealthCheck(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+
 func (s *Server) handleListDiffs(w http.ResponseWriter, r *http.Request) {
 	projectID := r.URL.Query().Get("project_id")
+	ctx := r.Context()
+
+	cacheKey := "diff_runs:" + projectID
+	if projectID == "" {
+		cacheKey = "diff_runs:all"
+	}
+
+	if db.RedisClient != nil {
+		cachedData, err := db.RedisClient.Get(ctx, cacheKey).Result()
+		if err == nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(cachedData))
+			return
+		}
+	}
+
 	runs, err := s.store.ListDiffRuns(projectID, 50)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -59,8 +80,18 @@ func (s *Server) handleListDiffs(w http.ResponseWriter, r *http.Request) {
 	if runs == nil {
 		runs = []*models.DiffRun{}
 	}
+	
+	jsonBytes, err := json.Marshal(runs)
+	if err == nil && db.RedisClient != nil {
+		db.RedisClient.Set(ctx, cacheKey, jsonBytes, 1*time.Minute)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(runs)
+	if err != nil {
+		json.NewEncoder(w).Encode(runs)
+	} else {
+		w.Write(jsonBytes)
+	}
 }
 
 func (s *Server) handleGetDiff(w http.ResponseWriter, r *http.Request) {

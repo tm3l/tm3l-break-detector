@@ -43,6 +43,7 @@ pub struct CodeAnalysis {
     pub function_count: usize,
     pub class_count: usize,
     pub line_count: usize,
+    pub system_calls: Vec<String>,
 }
 
 pub fn analyze_code(source: &str, lang: &str) -> CodeAnalysis {
@@ -140,6 +141,15 @@ fn traverse_python(node: &Node, source: &[u8], analysis: &mut CodeAnalysis) {
                 }
             }
         }
+        "call" => {
+            if let Some(func) = node.child_by_field_name("function") {
+                if let Ok(func_name) = func.utf8_text(source) {
+                    if func_name == "subprocess.run" || func_name == "os.system" || func_name == "subprocess.Popen" || func_name == "subprocess.call" || func_name == "subprocess.check_output" {
+                        analysis.system_calls.push(func_name.to_string());
+                    }
+                }
+            }
+        }
         _ => {}
     }
     
@@ -209,6 +219,15 @@ fn traverse_go(node: &Node, source: &[u8], analysis: &mut CodeAnalysis) {
                 }
             }
         },
+        "call_expression" => {
+            if let Some(func) = node.child_by_field_name("function") {
+                if let Ok(func_name) = func.utf8_text(source) {
+                    if func_name == "exec.Command" || func_name == "exec.CommandContext" {
+                        analysis.system_calls.push(func_name.to_string());
+                    }
+                }
+            }
+        },
         _ => {}
     }
 
@@ -272,6 +291,8 @@ fn traverse_js(node: &Node, source: &[u8], analysis: &mut CodeAnalysis) {
                                 }
                             }
                         }
+                    } else if func_name == "child_process.exec" || func_name == "child_process.spawn" || func_name == "exec" || func_name == "spawn" || func_name == "child_process.execSync" || func_name == "child_process.spawnSync" {
+                        analysis.system_calls.push(func_name.to_string());
                     }
                 }
             }

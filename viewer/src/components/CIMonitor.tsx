@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ShieldAlert, ShieldCheck, Shield, GitCommit, FileJson, AlertOctagon, CheckSquare } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, Shield, GitCommit, FileJson, AlertOctagon, CheckSquare, ChevronRight, ChevronDown } from 'lucide-react';
 import { BreakingChange } from '../types';
 
 interface CIMonitorProps {
@@ -12,26 +12,61 @@ interface CIMonitorProps {
   setShowModal: (show: boolean) => void;
 }
 
-const syntaxHighlight = (json: any) => {
-  if (typeof json !== 'string') {
-    json = JSON.stringify(json, undefined, 2);
+const JsonTree = ({ data, name = "root", isRoot = true }: { data: any, name?: string, isRoot?: boolean }) => {
+  const [isExpanded, setIsExpanded] = useState(isRoot);
+
+  if (typeof data !== 'object' || data === null) {
+    let valueClass = "text-emerald-400"; // default for strings
+    if (typeof data === 'number') valueClass = "text-cyan-400";
+    else if (typeof data === 'boolean') valueClass = "text-rose-400";
+    else if (data === null) valueClass = "text-slate-500";
+
+    return (
+      <div className="pl-4 py-0.5 font-mono text-sm">
+        <span className="text-cyan-200">{name}:</span>{' '}
+        <span className={valueClass}>{JSON.stringify(data)}</span>
+      </div>
+    );
   }
-  json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match: string) {
-    let cls = 'json-number';
-    if (/^"/.test(match)) {
-      if (/:$/.test(match)) {
-        cls = 'json-key';
-      } else {
-        cls = 'json-string';
-      }
-    } else if (/true|false/.test(match)) {
-      cls = 'json-boolean';
-    } else if (/null/.test(match)) {
-      cls = 'json-null';
-    }
-    return '<span class="' + cls + '">' + match + '</span>';
-  });
+
+  const isArray = Array.isArray(data);
+  const keys = Object.keys(data);
+  
+  if (keys.length === 0) {
+    return (
+      <div className="pl-4 py-0.5 font-mono text-sm">
+        <span className="text-cyan-200">{name}:</span> <span className="text-slate-500">{isArray ? '[]' : '{}'}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pl-4 py-0.5 font-mono text-sm">
+      <div 
+        className="flex items-center gap-1 cursor-pointer hover:text-emerald-300 transition-colors select-none"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        {isExpanded ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
+        <span className="text-cyan-200 font-bold">{name}</span>
+        <span className="text-slate-500">{isArray ? '[' : '{'}</span>
+        {!isExpanded && <span className="text-slate-500">... {isArray ? ']' : '}'}</span>}
+      </div>
+      
+      {isExpanded && (
+        <div className="border-l border-slate-700/50 ml-2">
+          {keys.map((key) => (
+            <JsonTree key={key} name={key} data={data[key as keyof typeof data]} isRoot={false} />
+          ))}
+        </div>
+      )}
+      
+      {isExpanded && (
+        <div className="pl-4 text-slate-500">
+          {isArray ? ']' : '}'}
+        </div>
+      )}
+    </div>
+  );
 };
 
 export function CIMonitor({
@@ -117,7 +152,7 @@ export function CIMonitor({
                         <span className="text-cyan-300 font-mono text-sm">{change.path || 'N/A'}</span>
                       </div>
                       <button onClick={() => toggleJson(idx)} className="text-[10px] tracking-widest bg-[#0d1117] hover:bg-slate-800 text-slate-300 border border-slate-600 px-3 py-1.5 font-bold uppercase rounded transition-colors flex items-center gap-2">
-                        {expandedJson[idx] ? '[-] HIDE RAW' : '[+] VIEW RAW'}
+                        {expandedJson[idx] ? 'Collapse JSON' : 'Expand JSON'}
                       </button>
                     </div>
                     <div className="text-xs mb-3 font-medium text-slate-300 border-l-2 border-amber-500/50 pl-4 py-1.5 bg-amber-500/5 rounded-r">
@@ -135,11 +170,10 @@ export function CIMonitor({
                     
                     {expandedJson[idx] && (
                       <div className="mt-4 relative animate-fade-in-up">
-                        <div className="absolute top-0 right-0 bg-slate-800 text-slate-400 text-[9px] uppercase px-2 py-1 rounded-bl border-b border-l border-slate-700">AST_PAYLOAD.JSON</div>
-                        <pre 
-                          className="bg-[#090c10] border border-slate-800 p-5 text-[11px] overflow-x-auto font-mono text-slate-300 rounded shadow-inner"
-                          dangerouslySetInnerHTML={{ __html: syntaxHighlight(change) }}
-                        />
+                        <div className="absolute top-0 right-0 bg-slate-800 text-slate-400 text-[9px] uppercase px-2 py-1 rounded-bl border-b border-l border-slate-700 z-10">AST_PAYLOAD.JSON</div>
+                        <div className="bg-[#090c10] border border-slate-800 p-5 overflow-x-auto text-slate-300 rounded shadow-inner pt-8">
+                          <JsonTree data={change} name="change_payload" />
+                        </div>
                       </div>
                     )}
                   </div>
@@ -157,3 +191,4 @@ export function CIMonitor({
     </div>
   );
 }
+

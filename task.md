@@ -1,0 +1,4 @@
+- [x] Task 1: System Call Extraction
+- [x] Task 2: Redis Caching
+- [x] Task 3: Add a health-check controller to the Go API gateway.
+- [x] Task 3: (React Governance UI) implemented.

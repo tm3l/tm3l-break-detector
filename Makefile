@@ -19,8 +19,8 @@ build-engine:
 build-go:
 	go build -o bin/server ./cmd/server
 
-test:
-	go test -v ./...
+test: build-engine
+	ANALYZER_BIN=./break-detector-engine go test -v ./...
 	cd engine && cargo test
 
 lint:

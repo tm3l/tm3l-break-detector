@@ -45,6 +45,7 @@ type CodeAnalysis struct {
 	FunctionCount int               `json:"function_count"`
 	ClassCount    int               `json:"class_count"`
 	LineCount     int               `json:"line_count"`
+	SystemCalls   []string          `json:"system_calls"`
 }
 
 // AnalyzeCode performs language-agnostic static analysis by calling the Rust analyzer
@@ -168,6 +169,14 @@ func SynthesizePrompt(analysis CodeAnalysis, targets map[string]bool, rawCode st
 				emoji = "⚠️"
 			}
 			sb.WriteString(fmt.Sprintf("\n%s %s\n", emoji, caveat.Message))
+		}
+	}
+
+	if len(analysis.SystemCalls) > 0 {
+		sb.WriteString("\n⚠️ **SECURITY WARNING: System Calls Detected** ⚠️\n")
+		sb.WriteString("The following system calls were detected and must be handled securely:\n")
+		for _, sc := range analysis.SystemCalls {
+			sb.WriteString(fmt.Sprintf("- `%s`\n", sc))
 		}
 	}
 

@@ -21,6 +21,12 @@ func main() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
+	redisAddr := os.Getenv("REDIS_ADDR")
+	if redisAddr == "" {
+		redisAddr = "localhost:6379"
+	}
+	db.InitRedis(redisAddr)
+
 	log.Println("Initializing SSE Broker...")
 	broker := api.NewBroker()
 
