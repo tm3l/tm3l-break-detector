@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Terminal, Activity, SplitSquareHorizontal, Cpu, ShieldCheck } from 'lucide-react';
+import { Terminal, Activity, SplitSquareHorizontal, Cpu, ShieldCheck, Webhook } from 'lucide-react';
 import { CIMonitor } from './components/CIMonitor';
 import { InteractiveSandbox, SandboxMode } from './components/InteractiveSandbox';
 import { PromptCompiler } from './components/PromptCompiler';
 import { AuditLedger } from './components/AuditLedger';
 import { OverrideModal } from './components/OverrideModal';
+import { WebhookAnalytics } from './components/WebhookAnalytics';
 import { BreakingChange, CodeAnalysis } from './types';
 
 function App() {
@@ -18,7 +19,7 @@ function App() {
   const [overrideNote, setOverrideNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const [viewMode, setViewMode] = useState<'MONITOR' | 'SANDBOX' | 'PROMPT' | 'AUDIT'>('MONITOR');
+  const [viewMode, setViewMode] = useState<'MONITOR' | 'SANDBOX' | 'PROMPT' | 'AUDIT' | 'WEBHOOK'>('MONITOR');
   const [sandboxMode, setSandboxMode] = useState<SandboxMode>('OPENAPI');
   const [sandboxBase, setSandboxBase] = useState('{\n  "openapi": "3.0.0",\n  "paths": {\n    "/users": {\n      "post": {\n        "requestBody": {\n          "content": {\n            "application/json": {\n              "schema": {\n                "type": "object",\n                "properties": { "email": { "type": "string" } }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}');
   const [sandboxTarget, setSandboxTarget] = useState('{\n  "openapi": "3.0.0",\n  "paths": {\n    "/users": {\n      "post": {\n        "requestBody": {\n          "content": {\n            "application/json": {\n              "schema": {\n                "type": "object",\n                "properties": { "email": { "type": "string" } },\n                "required": ["email"]\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}');
@@ -306,6 +307,9 @@ function App() {
             <button onClick={() => setViewMode('AUDIT')} className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase transition-colors rounded ${viewMode === 'AUDIT' ? 'bg-emerald-900/40 text-emerald-400' : 'text-slate-500 hover:text-slate-300'}`}>
               <ShieldCheck size={14} /> Audit Ledger
             </button>
+            <button onClick={() => setViewMode('WEBHOOK')} className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase transition-colors rounded ${viewMode === 'WEBHOOK' ? 'bg-pink-900/40 text-pink-400' : 'text-slate-500 hover:text-slate-300'}`}>
+              <Webhook size={14} /> [ Webhook Analytics ]
+            </button>
           </div>
         </header>
 
@@ -333,6 +337,8 @@ function App() {
           />
         ) : viewMode === 'AUDIT' ? (
           <AuditLedger />
+        ) : viewMode === 'WEBHOOK' ? (
+          <WebhookAnalytics />
         ) : (
           <CIMonitor 
             status={status} connectionState={connectionState}

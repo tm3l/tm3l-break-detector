@@ -3,3 +3,7 @@ pub mod config;
 pub mod diff;
 pub mod models;
 pub mod analyzer;
+pub mod sql;
+pub mod terraform;
+pub mod graphql;
+pub mod protobuf;
