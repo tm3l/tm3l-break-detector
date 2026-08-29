@@ -45,6 +45,18 @@ impl AnalyzerService for MyAnalyzerService {
                 .map_err(|e| Status::invalid_argument(format!("Failed to parse openapi payload: {}", e)))?;
             let result = compare_specs(&payload.base, &payload.target, &config);
             serde_json::to_string(&result).map_err(|e| Status::internal(e.to_string()))?
+        } else if req.mode == "sql" {
+            let result = break_detector_engine::sql::check_sql_migration(&req.source_code);
+            serde_json::to_string(&result).map_err(|e| Status::internal(e.to_string()))?
+        } else if req.mode == "terraform" {
+            let result = break_detector_engine::terraform::check_terraform_migration(&req.source_code);
+            serde_json::to_string(&result).map_err(|e| Status::internal(e.to_string()))?
+        } else if req.mode == "graphql" {
+            let result = break_detector_engine::graphql::check_graphql_migration(&req.source_code);
+            serde_json::to_string(&result).map_err(|e| Status::internal(e.to_string()))?
+        } else if req.mode == "protobuf" {
+            let result = break_detector_engine::protobuf::check_protobuf_migration(&req.source_code);
+            serde_json::to_string(&result).map_err(|e| Status::internal(e.to_string()))?
         } else {
             return Err(Status::invalid_argument(format!("Unknown mode: {}", req.mode)));
         };
