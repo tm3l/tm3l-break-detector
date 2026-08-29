@@ -1,19 +1,15 @@
-# Build Stage
-FROM rust:1.98-alpine AS builder
-
-RUN apk add --no-cache musl-dev
-
+FROM rust:alpine AS rust-builder
+RUN apk add --no-cache build-base clang compiler-rt protobuf-dev
 WORKDIR /app
-COPY engine/Cargo.toml engine/Cargo.lock* ./
+COPY proto ./proto
+WORKDIR /app/engine
+COPY engine/Cargo.toml engine/build.rs ./
 COPY engine/src ./src
+RUN RUSTFLAGS="-C link-arg=-lgcc" cargo build --release
 
-RUN cargo build --release
-
-# Final minimal runtime
-FROM alpine:3.24
-
-RUN apk add --no-cache ca-certificates
-
-COPY --from=builder /app/target/release/break-detector-engine /usr/local/bin/break-detector-engine
-
-ENTRYPOINT ["/usr/local/bin/break-detector-engine"]
+FROM alpine:latest
+RUN apk add --no-cache libgcc
+WORKDIR /app
+COPY --from=rust-builder /app/engine/target/release/break-detector-engine .
+EXPOSE 50051
+CMD ["./break-detector-engine"]

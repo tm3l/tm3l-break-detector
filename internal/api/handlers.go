@@ -48,6 +48,10 @@ func (s *Server) routes() {
 	s.Router.With(RequireJWT).Post("/api/diffs/{id}/override", s.handleOverrideDiff)
 	s.Router.Post("/api/prompt", s.handleGeneratePrompt)
 	s.Router.Post("/api/code-diff", s.handleCodeDiff)
+
+	// Webhooks
+	s.Router.Post("/api/webhooks/github", s.handleGitHubWebhook)
+	s.Router.Post("/api/webhooks/forgejo", s.handleForgejoWebhook)
 }
 
 func (s *Server) handleHealthCheck(w http.ResponseWriter, r *http.Request) {

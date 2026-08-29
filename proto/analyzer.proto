@@ -1,0 +1,17 @@
+syntax = "proto3";
+package analyzer;
+option go_package = "github.com/tm3l/tm3l-break-detector/internal/analyzer/pb";
+
+service AnalyzerService {
+  rpc AnalyzeCode(AnalyzeRequest) returns (AnalyzeResponse);
+}
+
+message AnalyzeRequest {
+  string source_code = 1;
+  string language = 2;
+  string mode = 3; // "analyze" or "openapi" or "code_migration"
+}
+
+message AnalyzeResponse {
+  string json_result = 1; // Return the raw JSON output since Go decodes it into its own struct
+}

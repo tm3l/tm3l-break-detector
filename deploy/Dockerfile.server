@@ -1,22 +1,12 @@
-FROM rust:alpine AS rust-builder
-RUN apk add --no-cache build-base clang compiler-rt
-WORKDIR /app/engine
-COPY engine/Cargo.toml ./
-COPY engine/src ./src
-RUN RUSTFLAGS="-C link-arg=-lgcc" cargo build --release
-
-# Stage 2: Build Go Server
-FROM golang:1.27-alpine AS go-builder
+FROM golang:1.25-alpine AS go-builder
 WORKDIR /app/server
 COPY go.mod go.sum* ./
 RUN go mod download
 COPY . ./
 RUN go build -o bin/server cmd/server/main.go
 
-# Stage 3: Final Alpine Image
 FROM alpine:latest
 WORKDIR /app
-COPY --from=rust-builder /app/engine/target/release/break-detector-engine .
 COPY --from=go-builder /app/server/bin/server .
 EXPOSE 8080
 CMD ["./server"]

@@ -1,78 +1,69 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use break_detector_engine::code_diff::check_code_migration;
 use break_detector_engine::config::TM3LConfig;
 use break_detector_engine::diff::compare_specs;
-use clap::Parser;
-use std::fs;
+use tonic::{transport::Server, Request, Response, Status};
 
-#[derive(Parser, Debug)]
-#[command(author, version, about)]
-struct Args {
-    #[arg(long)]
-    base: Option<String>,
-
-    #[arg(long)]
-    target: String,
-
-    #[arg(long)]
-    config: Option<String>,
-
-    #[arg(long, default_value = "openapi")]
-    mode: String,
-
-    #[arg(long, default_value = "python")]
-    language: String,
+pub mod pb {
+    tonic::include_proto!("analyzer");
 }
 
-fn main() -> Result<()> {
-    let args = Args::parse();
+use pb::analyzer_service_server::{AnalyzerService, AnalyzerServiceServer};
+use pb::{AnalyzeRequest, AnalyzeResponse};
 
-    let config: TM3LConfig = if let Some(config_path) = args.config {
-        let content = fs::read_to_string(&config_path)
-            .with_context(|| format!("Failed to read config: {}", config_path))?;
-        if config_path.ends_with(".yaml") || config_path.ends_with(".yml") {
-            serde_yaml::from_str(&content).context("Failed to parse YAML config")?
-        } else {
-            serde_json::from_str(&content).context("Failed to parse JSON config")?
-        }
-    } else {
-        TM3LConfig::default()
-    };
+#[derive(Default)]
+pub struct MyAnalyzerService {}
 
-    if args.mode == "python_migration" || args.mode == "code_migration" {
-        let target_file = fs::read_to_string(&args.target)
-            .with_context(|| format!("Failed to read source file: {}", args.target))?;
-        let lang = if args.mode == "python_migration" && args.language == "python" {
-            "python"
+#[derive(serde::Deserialize)]
+struct OpenApiPayload {
+    base: openapiv3::OpenAPI,
+    target: openapiv3::OpenAPI,
+}
+
+#[tonic::async_trait]
+impl AnalyzerService for MyAnalyzerService {
+    async fn analyze_code(
+        &self,
+        request: Request<AnalyzeRequest>,
+    ) -> std::result::Result<Response<AnalyzeResponse>, Status> {
+        let req = request.into_inner();
+        let config = TM3LConfig::default();
+
+        let json_result = if req.mode == "python_migration" || req.mode == "code_migration" {
+            let lang = if req.mode == "python_migration" && req.language == "python" {
+                "python"
+            } else {
+                &req.language
+            };
+            let result = check_code_migration(&req.source_code, lang);
+            serde_json::to_string(&result).map_err(|e| Status::internal(e.to_string()))?
+        } else if req.mode == "analyze" {
+            let result = break_detector_engine::analyzer::analyze_code(&req.source_code, &req.language);
+            serde_json::to_string(&result).map_err(|e| Status::internal(e.to_string()))?
+        } else if req.mode == "openapi" {
+            let payload: OpenApiPayload = serde_json::from_str(&req.source_code)
+                .map_err(|e| Status::invalid_argument(format!("Failed to parse openapi payload: {}", e)))?;
+            let result = compare_specs(&payload.base, &payload.target, &config);
+            serde_json::to_string(&result).map_err(|e| Status::internal(e.to_string()))?
         } else {
-            &args.language
+            return Err(Status::invalid_argument(format!("Unknown mode: {}", req.mode)));
         };
-        let result = check_code_migration(&target_file, lang);
-        println!("{}", serde_json::to_string_pretty(&result)?);
-        return Ok(());
+
+        Ok(Response::new(AnalyzeResponse { json_result }))
     }
+}
 
-    if args.mode == "analyze" {
-        let target_file = fs::read_to_string(&args.target)
-            .with_context(|| format!("Failed to read source file: {}", args.target))?;
-        let lang = &args.language;
-        let result = break_detector_engine::analyzer::analyze_code(&target_file, lang);
-        println!("{}", serde_json::to_string_pretty(&result)?);
-        return Ok(());
-    }
+#[tokio::main]
+async fn main() -> Result<()> {
+    let addr = "0.0.0.0:50051".parse().unwrap();
+    let service = MyAnalyzerService::default();
 
-    let base_path = args.base.context("--base is required in openapi mode")?;
-    let base_file = fs::read_to_string(&base_path)
-        .with_context(|| format!("Failed to read base spec: {}", base_path))?;
-    let target_file = fs::read_to_string(&args.target)
-        .with_context(|| format!("Failed to read target spec: {}", args.target))?;
+    println!("Starting gRPC server on {}", addr);
 
-    let base_spec: openapiv3::OpenAPI =
-        serde_json::from_str(&base_file).context("Failed to parse base spec as OpenAPI JSON")?;
-    let target_spec: openapiv3::OpenAPI = serde_json::from_str(&target_file)
-        .context("Failed to parse target spec as OpenAPI JSON")?;
+    Server::builder()
+        .add_service(AnalyzerServiceServer::new(service))
+        .serve(addr)
+        .await?;
 
-    let result = compare_specs(&base_spec, &target_spec, &config);
-    println!("{}", serde_json::to_string_pretty(&result)?);
     Ok(())
 }

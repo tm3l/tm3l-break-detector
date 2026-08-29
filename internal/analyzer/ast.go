@@ -1,12 +1,17 @@
 package analyzer
 
 import (
-	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
+	"time"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+
+	"github.com/tm3l/tm3l-break-detector/internal/analyzer/pb"
 )
 
 // DetectedLanguage holds language and version info
@@ -55,34 +60,35 @@ func AnalyzeCode(sourceCode string) CodeAnalysis {
 		return mockAnalyzeCode(sourceCode)
 	}
 
-	tmpFile, err := os.CreateTemp("", "code-*.src")
+	address := os.Getenv("ANALYZER_URL")
+	if address == "" {
+		address = "localhost:50051"
+	}
+
+	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		fmt.Printf("Failed to create temp file: %v\n", err)
+		fmt.Printf("Failed to connect to gRPC server at %s: %v\n", address, err)
 		return CodeAnalysis{}
 	}
-	defer os.Remove(tmpFile.Name())
-	tmpFile.WriteString(sourceCode)
-	tmpFile.Close()
+	defer conn.Close()
 
-	binPath := os.Getenv("ANALYZER_BIN")
-	if binPath == "" {
-		binPath = "./analyzer"
-	}
+	client := pb.NewAnalyzerServiceClient(conn)
 
-	cmd := exec.Command(binPath, "--mode", "analyze", "--target", tmpFile.Name())
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	if err := cmd.Run(); err != nil {
-		fmt.Printf("Analyzer failed: %v. Stderr: %s\n", err, stderr.String())
+	resp, err := client.AnalyzeCode(ctx, &pb.AnalyzeRequest{
+		SourceCode: sourceCode,
+		Mode:       "analyze",
+	})
+	if err != nil {
+		fmt.Printf("Analyzer gRPC call failed: %v\n", err)
 		// Fallback for tests if binary missing
 		return mockAnalyzeCode(sourceCode)
 	}
 
 	var analysis CodeAnalysis
-	if err := json.Unmarshal(stdout.Bytes(), &analysis); err != nil {
+	if err := json.Unmarshal([]byte(resp.JsonResult), &analysis); err != nil {
 		fmt.Printf("Failed to parse analyzer output: %v\n", err)
 		return CodeAnalysis{}
 	}
