@@ -13,11 +13,10 @@ Before performing any task, read and comply with [AGENTS.md](AGENTS.md).
 * Clean compilation cache and temporary files: `make clean`
 
 ## 📦 Core Architecture & Tech Stack
-* **Backend**: Go (1.23+). Statically compile (`CGO_ENABLED=0`) and use `log/slog` for structured logging.
-* **Frontend**: HTMX + React. Compile-time HTML via `templ`.
-* **Database**: PostgreSQL storage. Database calls must run via type-safe generated queries using `sqlc` and `pgxpool`.
-* **Polyglot Subsystems**: Rust for AST diffing (Break Detector) and memory-intensive traversal (Dep Radar). Python for LLM text analysis (Postmortem Machine).
-
+* **Primary Role**: Abstract Syntax Tree (AST) parsing and breaking change detection engine.
+* **Backend / Orchestration**: Go (1.23+). Statically compile (`CGO_ENABLED=0`) and use `log/slog` for structured logging.
+* **Parsing Engine**: Rust (for memory-safe, high-performance AST diffing and codebase traversal).
+* **Frontend (Viewer)**: React / TypeScript for visualizing code diffs and breaking change reports.
 ## 📄 TM3L Decision Lifecycle Taxonomy (STD-009)
 Documentation in this repo is version-controlled and categorized under `docs/` using the 11-Tier Taxonomy:
 * `adr` (Architecture), `bdr` (Business), `cdr` (Component), `edr` (Engineering), `ldr` (Legal), `mdr` (Model), `odr` (Operations), `pdr` (Product), `rfc` (RFCs), `sdr` (Security), `uxr` (User Experience).
