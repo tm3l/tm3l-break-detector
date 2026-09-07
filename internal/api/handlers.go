@@ -126,7 +126,12 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Password != "admin" {
+	expectedPassword := os.Getenv("ADMIN_PASSWORD")
+	if expectedPassword == "" {
+		expectedPassword = "admin"
+	}
+
+	if req.Password != expectedPassword {
 		http.Error(w, "invalid password", http.StatusUnauthorized)
 		return
 	}
